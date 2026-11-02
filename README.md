@@ -1,4 +1,4 @@
-# Tablet Edge
+# scrcpy tablet KVM
 
 <img src="icon.png" width="96" align="right" alt="">
 
