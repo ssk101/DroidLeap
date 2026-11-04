@@ -29,9 +29,13 @@ Download the files from the [latest release](../../releases/latest).
 
 1. Install the desktop app: the `.deb` on Linux, or run the `.exe` on
    Windows. It lives in the system tray.
-2. Install the `.apk` on the tablet and turn DroidLeap on under
-   **Settings > Accessibility**. It only draws a thin strip along one screen edge;
-   it doesn't read screen content.
+2. Install the tablet app with [Obtainium](https://github.com/ImranR98/Obtainium):
+   add the app with the URL `https://github.com/ssk101/DroidLeap`, and it keeps
+   DroidLeap updated from these releases. Or install the `.apk` directly.
+   Then turn DroidLeap on under **Settings > Accessibility**. It only draws a
+   thin strip along one screen edge; it doesn't read screen content.
+   If the switch is greyed out, open **Settings > Apps > DroidLeap**, tap **⋮**
+   and choose **Allow restricted settings**.
 3. In the tray menu, pick the screen edge the tablet sits beyond.
 
 | Action | How |
