@@ -1,6 +1,9 @@
 # Build output
-*.exe
-*.res
-*.o
-
+target/
 __pycache__/
+
+# Android
+.gradle/
+android/**/build/
+local.properties
+.idea/

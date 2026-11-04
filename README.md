@@ -2,81 +2,92 @@
 
 <img src="icon.png" width="96" align="right" alt="">
 
-Push your mouse pointer against an edge of your Windows desktop and it moves on
-to your Android tablet, as if the tablet were another monitor. Press **Pause**
-to get the mouse back.
+Move your mouse pointer off an edge of your desktop and it carries on onto your
+Android tablet, as if the tablet were another monitor. Your keyboard follows.
+Move back through the tablet's edge, or press **Pause**, to return.
 
-Under the hood Tablet Edge starts [scrcpy](https://github.com/Genymobile/scrcpy)
-in OTG mode, which makes the PC's mouse and keyboard act as a physical USB
-mouse and keyboard plugged into the tablet. No app is needed on the tablet, and
-USB debugging does not have to be enabled.
+The PC presents itself to the tablet as a USB mouse and keyboard (Android Open
+Accessory HID), so the tablet needs no driver, root or screen mirroring. A
+small companion app on the tablet reports when its pointer reaches the edge
+facing the PC, over the local network.
 
 ## Requirements
 
-- Windows 10 (1703) or later, x64.
-- The official [scrcpy Windows release](https://github.com/Genymobile/scrcpy/releases)
-  (`scrcpy-win64-*.zip`).
-- An Android device connected by USB. If scrcpy reports
-  `Could not find any USB device`, see scrcpy's
-  [OTG issues on Windows](https://github.com/Genymobile/scrcpy/blob/master/FAQ.md#otg-issues-on-windows).
+- **Linux:** a Wayland desktop with the InputCapture portal (GNOME 46 or later),
+  Ubuntu 24.04 or later for the `.deb`. The tray icon needs the AppIndicator
+  extension on GNOME (enabled by default on Ubuntu).
+- **Windows:** Windows 10 or 11, x64.
+- **Tablet:** Android 11 or later, connected by USB, with USB debugging enabled.
+  Close adb (`adb kill-server`), Android Studio and scrcpy while Tablet Edge runs:
+  they compete for the same USB interface.
+- PC and tablet on the same network, for returning through the tablet's edge.
+  Without it, **Pause** still brings the mouse back.
 
-## Usage
+## Setup
 
-1. Extract scrcpy somewhere, e.g. `C:\Tools\scrcpy\`.
-2. Put `tablet-edge.exe` and `tablet-edge.ini` in a folder of your choice and
-   run `tablet-edge.exe`. It lives in the notification area.
-3. Open **Settings** (right-click the tray icon) and set the path to
-   `scrcpy.exe`, and the edge of the desktop the tablet sits beyond.
-4. Push the pointer against that edge: the mouse and keyboard now control the
-   tablet. Press **Pause** to come back.
-
-To start it with Windows, put a shortcut to `tablet-edge.exe` in
-`shell:startup`.
+1. Install the desktop app: the `.deb` on Linux, or run `tablet-edge.exe` on
+   Windows. It lives in the system tray.
+2. Install the Tablet Edge APK on the tablet and turn it on under
+   **Settings > Accessibility**. It only draws a thin strip along one screen edge;
+   it doesn't read screen content.
+3. In the tray menu, pick the screen edge the tablet sits beyond.
 
 | Action | How |
 | --- | --- |
-| Hand the mouse to the tablet | Push against the configured desktop edge, or press **Pause** |
-| Get the mouse back | Press **Pause** |
-| Log monitor | Click the tray icon, or run `tablet-edge.exe` again |
-| Settings | Right-click the tray icon > **Settings...** |
+| Move to the tablet | Push the pointer through the chosen desktop edge |
+| Come back | Move through the tablet's opposite edge, or press **Pause** |
+| Pause the whole thing | Tray menu > **Enabled** |
 
-The edge trigger only fires on the outer edge of the whole desktop, so it works
-the same with one screen or several. It stays out of the way while a game or
-another program has confined the cursor.
+On Linux, GNOME asks once for permission to capture input. On Windows, the
+firewall may ask once about network access; allow it for the tablet app to be found.
 
 ## Settings
 
-Stored in `tablet-edge.ini` next to the exe. The Settings dialog edits it, and
-manual edits are picked up within about two seconds.
+The tray menu changes the common settings; the rest are in the settings file
+(tray menu > **Edit settings file**, then **Reload settings**).
 
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `side` | `left` | Desktop edge that leads to the tablet: `left`, `right`, `top` or `bottom` |
-| `threshold` | `400` | How hard to push: raw mouse movement against the edge needed to trigger. Depends on mouse DPI |
-| `timeout_ms` | `1000` | Time window the push must happen within |
-| `corner_margin` | `0` | Pixels ignored at both ends of the edge |
-| `serial` | *(empty)* | USB serial of the tablet; only needed with several Android devices plugged in |
-| `scrcpy` | `scrcpy.exe` | Path to `scrcpy.exe`; a bare name is looked up on `PATH` |
+| `threshold_px` | `0` | How far to push through the edge before switching, in pixels; 0 switches on touch |
+| `timeout_ms` | `1000` | Time window in which the push must add up |
+| `serial` | *(empty)* | USB serial number of the tablet; only needed with several Android devices plugged in |
+| `enabled` | `true` | `false` keeps all input on the desktop |
 
-## Logs
+| | Settings file | Log |
+| --- | --- | --- |
+| Linux | `~/.config/tablet-edge/config.toml` | `~/.local/state/tablet-edge/tablet-edge.log` |
+| Windows | `%APPDATA%\ssk101\tablet-edge\config\config.toml` | `%LOCALAPPDATA%\ssk101\tablet-edge\data\tablet-edge.log` |
 
-The log monitor shows Tablet Edge's own events and scrcpy's output live. The
-same log is written to `%TEMP%\tablet-edge.log`.
+## Privacy and security
+
+Mouse and keyboard input only travels over the USB cable. The network link to
+the tablet app carries edge positions only, and is not authenticated yet:
+another device on your network could make the mouse return to the PC early.
 
 ## Building
 
-Tablet Edge is a single C file built with [Zig](https://ziglang.org/download/)
-0.17 or later as a cross-compiler, so it builds from Linux, macOS or Windows
-without a Windows SDK:
+The desktop app is Rust (`desktop/`), the tablet app Kotlin (`android/`).
 
 ```sh
-./build.sh            # or: ZIG=/path/to/zig ./build.sh
+cd desktop
+cargo test
+cargo build --release          # Linux or Windows, on that OS
+./package-deb.sh               # Linux .deb in target/debian/
+
+# Windows build from Linux, with Zig as the linker:
+cargo zigbuild --release --target x86_64-pc-windows-gnu
+
+cd ../android
+./gradlew assembleDebug        # APK in app/build/outputs/apk/debug/
 ```
 
+GitHub Actions builds the Windows exe, the Linux `.deb` and the APK for every
+pull request merged into `master`; they're attached to the workflow run.
+
 The icon is generated by `make_icon.py` (requires [Pillow](https://pypi.org/project/pillow/)).
-GitHub Actions builds the exe for every pull request merged into `master`; the
-result is attached to the workflow run as an artifact.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). The USB HID report descriptors come from
+[scrcpy](https://github.com/Genymobile/scrcpy) (Apache License 2.0).

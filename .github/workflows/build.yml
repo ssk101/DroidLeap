@@ -10,29 +10,70 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  windows:
     # "closed" also fires for PRs that were closed without merging.
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
           # The commit that landed on master, not the PR's merge preview ref.
           ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
-
-      - uses: mlugg/setup-zig@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
         with:
-          version: 0.17.0
-
-      - name: Build tablet-edge.exe
-        run: bash build.sh
-
+          workspaces: desktop
+      - name: Test
+        run: cargo test --manifest-path desktop/Cargo.toml
+      - name: Build
+        run: cargo build --release --manifest-path desktop/Cargo.toml
       - uses: actions/upload-artifact@v4
         with:
           name: tablet-edge-windows-x64
           path: |
-            tablet-edge.exe
-            tablet-edge.ini
-            README.md
+            desktop/target/release/tablet-edge.exe
             LICENSE
+          if-no-files-found: error
+
+  linux:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    # The .deb needs the glibc of the oldest supported Ubuntu (24.04).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop
+      - name: Test
+        run: cargo test --manifest-path desktop/Cargo.toml
+      - name: Build the .deb
+        run: desktop/package-deb.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tablet-edge-linux-deb
+          path: desktop/target/debian/*.deb
+          if-no-files-found: error
+
+  android:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build the APK
+        working-directory: android
+        run: ./gradlew --console=plain assembleDebug lintDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tablet-edge-android-apk
+          path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
