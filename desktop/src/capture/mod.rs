@@ -6,6 +6,8 @@
 //! - `open(paths)` starts capturing in the background,
 //! - `set_edge(side)` picks the edge to watch; answered by [`Input::Watching`],
 //! - `set_active(bool)` arms or disarms the edge,
+//! - `set_return_key(evdev)` names the key that ends a hold; backends that can
+//!   end the hold themselves do, so a stuck engine can't keep the input,
 //! - `release(to)` ends a hold and puts the pointer at `to`,
 //! - `next()` waits for the next [`Input`],
 //! - `close()` stops.

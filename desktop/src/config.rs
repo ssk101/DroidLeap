@@ -9,7 +9,7 @@ use std::{
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 
-use crate::geometry::Side;
+use crate::{geometry::Side, keymap::NamedKey};
 
 const HEADER: &str = "\
 # DroidLeap settings. The tray menu rewrites this file; comments are not kept.
@@ -19,6 +19,9 @@ const HEADER: &str = "\
 # timeout_ms   time window in which the push must add up
 # serial       USB serial number of the Android device; empty picks the only one
 #              with USB debugging on
+# return_key   key that brings input back to the desktop: pause, scrolllock,
+#              printscreen, insert, menu, f1 to f24, rightctrl, rightalt,
+#              rightmeta or rightshift
 # enabled      false keeps all input on the desktop
 
 ";
@@ -30,6 +33,7 @@ pub struct Config {
     pub threshold_px: f64,
     pub timeout_ms: u64,
     pub serial: String,
+    pub return_key: NamedKey,
     pub enabled: bool,
 }
 
@@ -40,6 +44,7 @@ impl Default for Config {
             threshold_px: 0.0,
             timeout_ms: 1000,
             serial: String::new(),
+            return_key: NamedKey::PAUSE,
             enabled: true,
         }
     }
@@ -149,7 +154,15 @@ mod tests {
         assert_eq!(config.side, Side::Bottom);
         assert_eq!(config.serial(), Some("R5CT12345XY"));
         assert_eq!(config.timeout_ms, 1000);
+        assert_eq!(config.return_key, NamedKey::PAUSE);
         assert!(config.enabled);
+    }
+
+    #[test]
+    fn return_key_by_name() {
+        let path = temp_file("return-key");
+        fs::write(&path, "return_key = \"scrolllock\"\n").unwrap();
+        assert_eq!(Config::load(&path).unwrap().return_key.evdev(), 70);
     }
 
     #[test]
@@ -158,6 +171,7 @@ mod tests {
         let config = Config {
             side: Side::Top,
             threshold_px: 250.0,
+            return_key: NamedKey::from_name("f13").unwrap(),
             enabled: false,
             ..Config::default()
         };
@@ -178,6 +192,7 @@ mod tests {
             "timeout_ms = 0",
             "side = \"middle\"",
             "sied = \"left\"",
+            "return_key = \"esc\"",
         ] {
             fs::write(&path, bad).unwrap();
             assert!(Config::load(&path).is_err(), "{bad}");

@@ -10,7 +10,7 @@ use std::{
     mem, ptr,
     sync::{
         Mutex, MutexGuard,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU32, Ordering},
         mpsc as std_mpsc,
     },
     thread::JoinHandle,
@@ -50,8 +50,6 @@ use crate::{
     keymap::evdev_from_windows,
 };
 
-const VK_PAUSE: u32 = 0x13;
-
 type Inputs = mpsc::UnboundedSender<Result<Input, CaptureError>>;
 
 /// State the hook callbacks read. Hooks have no user data pointer, hence a static.
@@ -61,6 +59,8 @@ struct Shared {
     barriers: Mutex<Vec<EdgeBarrier>>,
     active: AtomicBool,
     holding: AtomicBool,
+    /// evdev code; 0 matches no key.
+    return_key: AtomicU32,
 }
 
 static SHARED: Shared = Shared {
@@ -69,6 +69,7 @@ static SHARED: Shared = Shared {
     barriers: Mutex::new(Vec::new()),
     active: AtomicBool::new(false),
     holding: AtomicBool::new(false),
+    return_key: AtomicU32::new(0),
 };
 
 pub struct Capture {
@@ -101,6 +102,10 @@ impl Capture {
 
     pub fn set_active(&self, active: bool) {
         SHARED.active.store(active, Ordering::SeqCst);
+    }
+
+    pub fn set_return_key(&self, evdev: u32) {
+        SHARED.return_key.store(evdev, Ordering::SeqCst);
     }
 
     pub fn release(&self, to: (f64, f64)) {
@@ -395,13 +400,13 @@ unsafe extern "system" fn keyboard_hook(code: i32, wparam: WPARAM, lparam: LPARA
         let info = unsafe { &*(lparam as *const KBDLLHOOKSTRUCT) };
         if info.flags & LLKHF_INJECTED == 0 {
             let pressed = info.flags & LLKHF_UP == 0;
-            if pressed && info.vkCode == VK_PAUSE {
+            let key =
+                evdev_from_windows(info.scanCode, info.flags & LLKHF_EXTENDED != 0, info.vkCode);
+            if pressed && key == Some(SHARED.return_key.load(Ordering::SeqCst)) {
                 // Give the desktop its input back even if the engine is stuck.
                 SHARED.holding.store(false, Ordering::SeqCst);
             }
-            if let Some(key) =
-                evdev_from_windows(info.scanCode, info.flags & LLKHF_EXTENDED != 0, info.vkCode)
-            {
+            if let Some(key) = key {
                 send(Ok(Input::Key { code: key, pressed }));
             }
             return 1;

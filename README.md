@@ -4,7 +4,8 @@
 
 Move your mouse pointer off an edge of your desktop and it carries on onto your
 Android phone or tablet, as if it were another monitor. Your keyboard follows.
-Move back through the device's edge, or press **Pause**, to return.
+Move back through the device's edge, or press the return key (**Pause** by
+default), to return.
 
 The PC presents itself to the device as a USB mouse and keyboard (Android Open
 Accessory HID), so it needs no driver, root or screen mirroring. A small
@@ -21,7 +22,7 @@ the PC, over the local network.
   enabled. Close adb (`adb kill-server`), Android Studio and scrcpy while
   DroidLeap runs: they compete for the same USB interface.
 - PC and device on the same network, for returning through the device's edge.
-  Without it, **Pause** still brings the mouse back.
+  Without it, the return key still brings the mouse back.
 
 ## Setup
 
@@ -42,7 +43,7 @@ Download the files from the [latest release](../../releases/latest).
 | Action | How |
 | --- | --- |
 | Move to the device | Push the pointer through the chosen desktop edge |
-| Come back | Move through the device's opposite edge, or press **Pause** |
+| Come back | Move through the device's opposite edge, or press the return key (**Pause**) |
 | Pause the whole thing | Tray menu > **Enabled** |
 
 On Linux, GNOME asks once for permission to capture input. On Windows, the
@@ -59,6 +60,7 @@ The tray menu changes the common settings; the rest are in the settings file
 | `threshold_px` | `0` | How far to push through the edge before switching, in pixels; 0 switches on touch |
 | `timeout_ms` | `1000` | Time window in which the push must add up |
 | `serial` | *(empty)* | USB serial number of the Android device; only needed with several plugged in |
+| `return_key` | `pause` | Key that brings input back: `pause`, `scrolllock`, `printscreen`, `insert`, `menu`, `f1` to `f24`, `rightctrl`, `rightalt`, `rightmeta` or `rightshift`. It never reaches the device. |
 | `enabled` | `true` | `false` keeps all input on the desktop |
 
 | | Settings file | Log |

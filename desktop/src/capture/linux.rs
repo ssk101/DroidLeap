@@ -77,6 +77,9 @@ impl Capture {
         self.request(Request::SetActive(active));
     }
 
+    /// The portal only ends a hold on the engine's release, so there's nothing to do.
+    pub fn set_return_key(&self, _evdev: u32) {}
+
     pub fn release(&self, to: (f64, f64)) {
         self.request(Request::Release(to));
     }

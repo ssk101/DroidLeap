@@ -1,5 +1,88 @@
 //! Linux evdev key codes (what libei reports) to USB HID keyboard usages
-//! (HID Usage Tables, page 0x07).
+//! (HID Usage Tables, page 0x07), and the key names used in the settings file.
+
+/// Keys that may hand input back: (settings name, display label, evdev code).
+/// Only keys rarely needed on the Android device, since the return key never reaches it.
+const NAMED_KEYS: &[(&str, &str, u32)] = &[
+    ("pause", "Pause", 119),
+    ("scrolllock", "Scroll Lock", 70),
+    ("printscreen", "Print Screen", 99),
+    ("insert", "Insert", 110),
+    ("menu", "Menu", 127),
+    ("rightctrl", "Right Ctrl", 97),
+    ("rightalt", "Right Alt", 100),
+    ("rightmeta", "Right Meta", 126),
+    ("rightshift", "Right Shift", 54),
+    ("f1", "F1", 59),
+    ("f2", "F2", 60),
+    ("f3", "F3", 61),
+    ("f4", "F4", 62),
+    ("f5", "F5", 63),
+    ("f6", "F6", 64),
+    ("f7", "F7", 65),
+    ("f8", "F8", 66),
+    ("f9", "F9", 67),
+    ("f10", "F10", 68),
+    ("f11", "F11", 87),
+    ("f12", "F12", 88),
+    ("f13", "F13", 183),
+    ("f14", "F14", 184),
+    ("f15", "F15", 185),
+    ("f16", "F16", 186),
+    ("f17", "F17", 187),
+    ("f18", "F18", 188),
+    ("f19", "F19", 189),
+    ("f20", "F20", 190),
+    ("f21", "F21", 191),
+    ("f22", "F22", 192),
+    ("f23", "F23", 193),
+    ("f24", "F24", 194),
+];
+
+/// A key from [`NAMED_KEYS`], stored in the settings file by name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(try_from = "String", into = "String")]
+pub struct NamedKey(usize);
+
+impl NamedKey {
+    pub const PAUSE: NamedKey = NamedKey(0);
+
+    pub fn from_name(name: &str) -> Option<NamedKey> {
+        NAMED_KEYS
+            .iter()
+            .position(|&(n, _, _)| n == name)
+            .map(NamedKey)
+    }
+
+    pub fn name(self) -> &'static str {
+        NAMED_KEYS[self.0].0
+    }
+
+    pub fn label(self) -> &'static str {
+        NAMED_KEYS[self.0].1
+    }
+
+    pub fn evdev(self) -> u32 {
+        NAMED_KEYS[self.0].2
+    }
+}
+
+impl TryFrom<String> for NamedKey {
+    type Error = String;
+
+    fn try_from(name: String) -> Result<NamedKey, String> {
+        NamedKey::from_name(&name).ok_or_else(|| {
+            let names: Vec<_> = NAMED_KEYS.iter().map(|&(n, _, _)| n).collect();
+            format!("unknown key \"{name}\", use one of: {}", names.join(", "))
+        })
+    }
+}
+
+impl From<NamedKey> for String {
+    fn from(key: NamedKey) -> String {
+        key.name().to_string()
+    }
+}
 
 /// HID usage for an evdev key code, or `None` for keys the HID keyboard
 /// descriptor cannot express (media keys, volume, power, ...).
@@ -107,7 +190,12 @@ pub fn evdev_from_windows(scan_code: u32, extended: bool, virtual_key: u32) -> O
         return Some(119);
     }
     if !extended {
-        return (0x01..=0x58).contains(&scan_code).then_some(scan_code);
+        return match scan_code {
+            0x01..=0x58 => Some(scan_code),
+            0x64..=0x6E => Some(scan_code - 0x64 + 183), // F13..F23
+            0x76 => Some(194),                           // F24
+            _ => None,
+        };
     }
     let evdev = match scan_code {
         0x1C => 96,  // Keypad Enter
@@ -136,7 +224,38 @@ pub fn evdev_from_windows(scan_code: u32, extended: bool, virtual_key: u32) -> O
 
 #[cfg(test)]
 mod tests {
-    use super::{evdev_from_windows, hid_usage};
+    use super::{NAMED_KEYS, NamedKey, evdev_from_windows, hid_usage};
+
+    #[test]
+    fn named_keys_round_trip() {
+        for &(name, _, evdev) in NAMED_KEYS {
+            let key = NamedKey::from_name(name).unwrap();
+            assert_eq!(key.name(), name);
+            assert_eq!(key.evdev(), evdev);
+            assert_eq!(NamedKey::try_from(String::from(key)), Ok(key));
+        }
+        assert_eq!(NamedKey::PAUSE.evdev(), 119);
+    }
+
+    #[test]
+    fn named_keys_are_unique() {
+        for (i, &(name, _, evdev)) in NAMED_KEYS.iter().enumerate() {
+            for &(other_name, _, other_evdev) in &NAMED_KEYS[i + 1..] {
+                assert_ne!(name, other_name);
+                assert_ne!(evdev, other_evdev, "{name} and {other_name}");
+            }
+        }
+    }
+
+    #[test]
+    fn unknown_key_name_lists_the_choices() {
+        let error = NamedKey::try_from("esc".to_string()).unwrap_err();
+        assert!(
+            error.contains("\"esc\"") && error.contains("scrolllock"),
+            "{error}"
+        );
+        assert_eq!(NamedKey::from_name("Pause"), None);
+    }
 
     #[test]
     fn letter_rows() {
@@ -202,6 +321,9 @@ mod tests {
         assert_eq!(evdev_from_windows(0x45, true, 0x90), Some(69)); // Num Lock
         assert_eq!(evdev_from_windows(0x45, false, 0x13), Some(119)); // Pause
         assert_eq!(evdev_from_windows(0x5B, true, 0x5B), Some(125)); // Windows key
+        assert_eq!(evdev_from_windows(0x64, false, 0x7C), Some(183)); // F13
+        assert_eq!(evdev_from_windows(0x6E, false, 0x86), Some(193)); // F23
+        assert_eq!(evdev_from_windows(0x76, false, 0x87), Some(194)); // F24
         assert_eq!(evdev_from_windows(0x00, false, 0xB3), None); // media key
     }
 

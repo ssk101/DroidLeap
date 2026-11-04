@@ -2,7 +2,7 @@
 //!
 //! The per-OS [`Capture`] reports edge touches and held input; the engine
 //! applies the push threshold, forwards input to the tablet over USB, and
-//! hands it back on Pause or when the tablet app reports its pointer at the
+//! hands it back on the return key or when the tablet app reports its pointer at the
 //! return edge. It recovers on its own: a lost tablet disarms the edge until
 //! it's back, and a failed capture session is retried.
 
@@ -19,14 +19,12 @@ use crate::{
     config::{Config, Paths},
     geometry::{Rect, Side, return_point},
     hid::{KEYBOARD_ID, Keyboard, MOUSE_ID, Mouse},
-    keymap,
+    keymap::{self, NamedKey},
     link::{self, HoverState, Link, LinkEvent, TabletMessage},
     log,
     tablet::{Change, UsbTablet, Wake},
 };
 
-/// evdev code of the key that hands input back. Everything else, Esc included, goes to the tablet.
-const KEY_PAUSE: u32 = 119;
 /// Moving this far back from the edge while pushing hands the pointer back.
 const AWAY_PX: f64 = 3.0;
 const SESSION_RETRY_DELAY: Duration = Duration::from_secs(5);
@@ -45,6 +43,7 @@ pub enum Command {
 pub struct Status {
     pub enabled: bool,
     pub side: Side,
+    pub return_key: NamedKey,
     pub tablet: Option<String>,
     pub link: Option<String>,
     pub on_tablet: bool,
@@ -56,6 +55,7 @@ impl Status {
         Status {
             enabled: config.enabled,
             side: config.side,
+            return_key: config.return_key,
             tablet: None,
             link: None,
             on_tablet: false,
@@ -76,7 +76,10 @@ impl Status {
             },
         ];
         if self.on_tablet {
-            lines.push("Input is on the device (Pause returns)".into());
+            lines.push(format!(
+                "Input is on the device ({} returns)",
+                self.return_key.label()
+            ));
         }
         if let Some(problem) = &self.problem {
             lines.push(problem.clone());
@@ -175,7 +178,7 @@ impl Engine {
         let mdns = ServiceDaemon::new()
             .inspect_err(|e| {
                 log(format!(
-                    "mDNS unavailable, the Android device can only hand back with Pause: {e}"
+                    "mDNS unavailable, the Android device can only hand back with the return key: {e}"
                 ))
             })
             .ok();
@@ -289,6 +292,7 @@ impl Engine {
             s.problem = None;
         });
         capture.set_edge(self.config.side);
+        capture.set_return_key(self.config.return_key.evdev());
         self.sync_armed(capture, &mut session).await;
 
         let mut tick = tokio::time::interval(Duration::from_millis(250));
@@ -346,6 +350,9 @@ impl Engine {
                 }
                 if old.side != self.config.side {
                     self.apply_side(capture, session).await;
+                }
+                if old.return_key != self.config.return_key {
+                    capture.set_return_key(self.config.return_key.evdev());
                 }
                 self.sync_armed(capture, session).await;
                 None
@@ -506,10 +513,13 @@ impl Engine {
                 self.release(capture, session, side.moved(origin, 1.0, along))
                     .await;
             }
-            State::Captured { origin, .. } if code == KEY_PAUSE && pressed => {
+            State::Captured { origin, .. } if code == self.config.return_key.evdev() && pressed => {
                 self.release(capture, session, side.moved(origin, 1.0, 0.0))
                     .await;
-                log("input back on the desktop (Pause)");
+                log(format!(
+                    "input back on the desktop ({})",
+                    self.config.return_key.label()
+                ));
             }
             State::Captured { .. } => {
                 let Some(usage) = keymap::hid_usage(code) else {
@@ -744,10 +754,15 @@ impl Engine {
             self.on_usb_change(change);
         }
         let old = std::mem::replace(&mut self.config, config);
-        let (enabled, side) = (self.config.enabled, self.config.side);
+        let (enabled, side, return_key) = (
+            self.config.enabled,
+            self.config.side,
+            self.config.return_key,
+        );
         self.set_status(|s| {
             s.enabled = enabled;
             s.side = side;
+            s.return_key = return_key;
             s.problem = None;
         });
         Some(old)
