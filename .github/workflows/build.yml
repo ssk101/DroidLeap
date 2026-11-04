@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [closed]
     branches: [master]
+  push:
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -12,7 +14,7 @@ permissions:
 jobs:
   windows:
     # "closed" also fires for PRs that were closed without merging.
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +38,7 @@ jobs:
           if-no-files-found: error
 
   linux:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     # The .deb needs the glibc of the oldest supported Ubuntu (24.04).
     runs-on: ubuntu-24.04
     steps:
@@ -58,7 +60,7 @@ jobs:
           if-no-files-found: error
 
   android:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,11 +71,60 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build the APK
+      - name: Build the debug APK
+        if: github.ref_type != 'tag'
         working-directory: android
         run: ./gradlew --console=plain assembleDebug lintDebug
+      - name: Build the signed release APK
+        if: github.ref_type == 'tag'
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
+            echo "::error::Set the ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS repository secrets"
+            exit 1
+          fi
+          export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/release.jks"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$ANDROID_KEYSTORE_FILE"
+          ./gradlew --console=plain assembleRelease lintRelease
       - uses: actions/upload-artifact@v4
         with:
           name: droidleap-android-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/*/*.apk
           if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: [windows, linux, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the tag matches the app versions
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          desktop=$(sed -n 's/^version = "\(.*\)"/\1/p' desktop/Cargo.toml | head -1)
+          android=$(sed -n 's/^ *versionName = "\(.*\)"/\1/p' android/app/build.gradle.kts)
+          if [ "$desktop" != "$version" ] || [ "$android" != "$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME, but desktop/Cargo.toml has $desktop and the Android versionName is $android"
+            exit 1
+          fi
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect the release files
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          mkdir dist
+          cp "artifacts/droidleap-windows-x64/desktop/target/release/droidleap.exe" "dist/droidleap-$version-windows-x64.exe"
+          cp "artifacts/droidleap-linux-deb/droidleap_${version}_amd64.deb" dist/
+          cp "artifacts/droidleap-android-apk/release/app-release.apk" "dist/droidleap-$version.apk"
+          (cd dist && sha256sum -- * > SHA256SUMS)
+      - name: Create a draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "DroidLeap ${GITHUB_REF_NAME#v}" --generate-notes dist/*
