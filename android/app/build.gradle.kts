@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "io.github.ssk101.tabletedge"
+    namespace = "io.github.ssk101.droidleap"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "io.github.ssk101.tabletedge"
+        applicationId = "io.github.ssk101.droidleap"
         // Android 11: WindowContext and WindowMetrics, needed for overlays from a service.
         minSdk = 30
         targetSdk = 36

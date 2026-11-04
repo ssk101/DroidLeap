@@ -73,7 +73,7 @@ mod tests {
 
     #[test]
     fn rotates_when_full_and_keeps_one_old_file() {
-        let dir = std::env::temp_dir().join(format!("tablet-edge-log-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("droidleap-log-test-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("test.log");
         let _ = fs::remove_file(&path);
@@ -91,7 +91,7 @@ mod tests {
     #[test]
     fn a_line_longer_than_the_cap_is_still_written() {
         let dir =
-            std::env::temp_dir().join(format!("tablet-edge-log-test-long-{}", std::process::id()));
+            std::env::temp_dir().join(format!("droidleap-log-test-long-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("test.log");
         let _ = fs::remove_file(&path);

@@ -19,7 +19,7 @@ use tokio::{
 use crate::{geometry::Side, log};
 
 pub const PROTOCOL_VERSION: u32 = 1;
-const SERVICE_TYPE: &str = "_tablet-edge._tcp.local.";
+const SERVICE_TYPE: &str = "_droidleap._tcp.local.";
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
 const RETRY_DELAY: Duration = Duration::from_secs(3);
 /// Longest accepted message line, so a peer can't make us buffer without limit.

@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "tablet-edge-companion"
+rootProject.name = "droidleap-android"
 include(":app")

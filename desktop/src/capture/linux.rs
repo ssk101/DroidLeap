@@ -254,7 +254,7 @@ async fn serve(
     let context = ei::Context::new(stream).map_err(|e| format!("libei: {e}"))?;
     context.flush().map_err(|e| format!("libei: {e}"))?;
     let (_connection, events) = context
-        .handshake_tokio("tablet-edge", ei::handshake::ContextType::Receiver)
+        .handshake_tokio("droidleap", ei::handshake::ContextType::Receiver)
         .await
         .map_err(|e| format!("libei handshake: {e}"))?;
 

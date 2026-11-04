@@ -113,7 +113,7 @@ fn update(tray: &TrayIcon, status: &Status) {
 
 /// Windows cuts tray tooltips at 127 characters.
 fn tooltip(status: &Status) -> String {
-    let text = format!("Tablet Edge\n{}", status.lines().join("\n"));
+    let text = format!("DroidLeap\n{}", status.lines().join("\n"));
     text.chars().take(127).collect()
 }
 

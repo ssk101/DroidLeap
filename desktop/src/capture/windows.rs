@@ -216,7 +216,7 @@ type Hooks = [windows_sys::Win32::UI::WindowsAndMessaging::HHOOK; 2];
 
 unsafe fn set_up() -> Result<(HWND, Hooks), String> {
     let instance = unsafe { GetModuleHandleW(ptr::null()) };
-    let class_name: Vec<u16> = "tablet-edge-capture\0".encode_utf16().collect();
+    let class_name: Vec<u16> = "droidleap-capture\0".encode_utf16().collect();
     let mut class: WNDCLASSW = unsafe { mem::zeroed() };
     class.lpfnWndProc = Some(window_proc);
     class.hInstance = instance;

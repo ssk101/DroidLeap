@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_description">Detects when the mouse pointer reaches a screen edge, so control can go back to the connected computer. Tablet Edge does not read screen content or observe your actions.</string>
+    <string name="accessibility_description">Detects when the mouse pointer reaches a screen edge, so control can go back to the connected computer. DroidLeap does not read screen content or observe your actions.</string>
 </resources>

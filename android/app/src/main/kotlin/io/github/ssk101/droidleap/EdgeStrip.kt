@@ -1,4 +1,4 @@
-package io.github.ssk101.tabletedge
+package io.github.ssk101.droidleap
 
 import android.accessibilityservice.AccessibilityService
 import android.graphics.PixelFormat
@@ -46,7 +46,7 @@ class EdgeStrip(
             gravity = edge.gravity
             layoutInDisplayCutoutMode = LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             fitInsetsTypes = 0
-            title = "tablet-edge ${edge.wireName}"
+            title = "droidleap ${edge.wireName}"
         }
         view = View(service).apply {
             // Visible while prototyping, so it's clear which edge is armed.

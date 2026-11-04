@@ -1,4 +1,4 @@
-# scrcpy tablet KVM
+# DroidLeap
 
 <img src="icon.png" width="96" align="right" alt="">
 
@@ -18,16 +18,16 @@ facing the PC, over the local network.
   extension on GNOME (enabled by default on Ubuntu).
 - **Windows:** Windows 10 or 11, x64.
 - **Tablet:** Android 11 or later, connected by USB, with USB debugging enabled.
-  Close adb (`adb kill-server`), Android Studio and scrcpy while Tablet Edge runs:
+  Close adb (`adb kill-server`), Android Studio and scrcpy while DroidLeap runs:
   they compete for the same USB interface.
 - PC and tablet on the same network, for returning through the tablet's edge.
   Without it, **Pause** still brings the mouse back.
 
 ## Setup
 
-1. Install the desktop app: the `.deb` on Linux, or run `tablet-edge.exe` on
+1. Install the desktop app: the `.deb` on Linux, or run `droidleap.exe` on
    Windows. It lives in the system tray.
-2. Install the Tablet Edge APK on the tablet and turn it on under
+2. Install the DroidLeap APK on the tablet and turn it on under
    **Settings > Accessibility**. It only draws a thin strip along one screen edge;
    it doesn't read screen content.
 3. In the tray menu, pick the screen edge the tablet sits beyond.
@@ -56,8 +56,8 @@ The tray menu changes the common settings; the rest are in the settings file
 
 | | Settings file | Log |
 | --- | --- | --- |
-| Linux | `~/.config/tablet-edge/config.toml` | `~/.local/state/tablet-edge/tablet-edge.log` |
-| Windows | `%APPDATA%\ssk101\tablet-edge\config\config.toml` | `%LOCALAPPDATA%\ssk101\tablet-edge\data\tablet-edge.log` |
+| Linux | `~/.config/droidleap/config.toml` | `~/.local/state/droidleap/droidleap.log` |
+| Windows | `%APPDATA%\ssk101\droidleap\config\config.toml` | `%LOCALAPPDATA%\ssk101\droidleap\data\droidleap.log` |
 
 ## Privacy and security
 

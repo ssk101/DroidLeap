@@ -1,10 +1,10 @@
 #!/bin/sh
-# Builds target/debian/tablet-edge_<version>_<arch>.deb from this crate.
+# Builds target/debian/droidleap_<version>_<arch>.deb from this crate.
 set -eu
 umask 022
 cd "$(dirname "$0")"
 
-NAME=tablet-edge
+NAME=droidleap
 VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
 ARCH=$(dpkg --print-architecture)
 OUT=target/debian
@@ -16,13 +16,13 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE/DEBIAN" "$STAGE/usr/bin" "$STAGE/usr/share/applications" \
     "$STAGE/usr/share/icons/hicolor/256x256/apps" "$STAGE/usr/share/doc/$NAME"
 
-install -s -m 755 target/release/tablet-edge "$STAGE/usr/bin/$NAME"
+install -s -m 755 "target/release/$NAME" "$STAGE/usr/bin/$NAME"
 install -m 644 ../icon.png "$STAGE/usr/share/icons/hicolor/256x256/apps/$NAME.png"
 
 cat > "$STAGE/usr/share/applications/$NAME.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Tablet Edge
+Name=DroidLeap
 Comment=Move the mouse off a screen edge to control an Android tablet over USB
 Exec=$NAME
 Icon=$NAME
@@ -31,7 +31,7 @@ Categories=Utility;
 EOF
 
 {
-    echo "tablet-edge"
+    echo "DroidLeap"
     echo
     echo "HID report descriptors are taken from scrcpy:"
     echo "Copyright (C) 2018 Genymobile, Copyright (C) 2018-2025 Romain Vimont,"
@@ -53,16 +53,16 @@ Architecture: $ARCH
 Maintainer: Stian Skjondal <ssk101@users.noreply.github.com>
 Depends: $SHLIBS, xdg-desktop-portal, android-udev-rules
 Recommends: xdg-desktop-portal-gnome | xdg-desktop-portal-kde, gnome-shell-extension-appindicator | plasma-workspace
-Conflicts: tablet-edge-prototype
-Replaces: tablet-edge-prototype
+Conflicts: tablet-edge
+Replaces: tablet-edge
 Section: utils
 Priority: optional
 Installed-Size: $(du -sk "$STAGE/usr" | cut -f1)
-Homepage: https://github.com/ssk101/scrcpy-tablet-kvm
+Homepage: https://github.com/ssk101/droidleap
 Description: Use an Android tablet as a screen-edge extension over USB
  Moving the mouse off a chosen desktop edge hands mouse and keyboard to an
  Android tablet connected over USB (Android Open Accessory HID). Pause, or
- moving back through the tablet's edge (with the Tablet Edge Android app),
+ moving back through the tablet's edge (with the DroidLeap Android app),
  hands them back. Runs in the system tray. Needs a Wayland desktop with the
  InputCapture portal (GNOME 46+).
 EOF

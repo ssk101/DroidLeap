@@ -1,4 +1,4 @@
-//! tablet-edge: move the mouse off a screen edge to use it, and the keyboard,
+//! DroidLeap: move the mouse off a screen edge to use it, and the keyboard,
 //! on an Android tablet connected over USB.
 
 // Release builds on Windows are tray apps without a console window.
@@ -14,7 +14,7 @@ use tokio::{
     task::LocalSet,
 };
 
-use tablet_edge::{
+use droidleap::{
     config::{Config, Paths},
     engine::{Command, Engine, Status},
     log, logging, tray,
@@ -24,7 +24,7 @@ fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("tablet-edge: {e}");
+            eprintln!("droidleap: {e}");
             ExitCode::FAILURE
         }
     }
@@ -40,10 +40,7 @@ async fn run() -> Result<(), String> {
         TryLockError::Error(e) => format!("{}: {e}", paths.lock_file.display()),
     })?;
     logging::init(&paths.log_file).map_err(|e| format!("{}: {e}", paths.log_file.display()))?;
-    log(format!(
-        "tablet-edge {} starting",
-        env!("CARGO_PKG_VERSION")
-    ));
+    log(format!("droidleap {} starting", env!("CARGO_PKG_VERSION")));
 
     let (config, problem) = match Config::load(&paths.config_file) {
         Ok(config) => (config, None),

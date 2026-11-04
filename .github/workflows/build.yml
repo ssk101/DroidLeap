@@ -29,9 +29,9 @@ jobs:
         run: cargo build --release --manifest-path desktop/Cargo.toml
       - uses: actions/upload-artifact@v4
         with:
-          name: tablet-edge-windows-x64
+          name: droidleap-windows-x64
           path: |
-            desktop/target/release/tablet-edge.exe
+            desktop/target/release/droidleap.exe
             LICENSE
           if-no-files-found: error
 
@@ -53,7 +53,7 @@ jobs:
         run: desktop/package-deb.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: tablet-edge-linux-deb
+          name: droidleap-linux-deb
           path: desktop/target/debian/*.deb
           if-no-files-found: error
 
@@ -74,6 +74,6 @@ jobs:
         run: ./gradlew --console=plain assembleDebug lintDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: tablet-edge-android-apk
+          name: droidleap-android-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error

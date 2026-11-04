@@ -1,4 +1,4 @@
-package io.github.ssk101.tabletedge
+package io.github.ssk101.droidleap
 
 import android.util.Log
 import java.time.LocalTime
@@ -6,7 +6,7 @@ import java.time.format.DateTimeFormatter
 
 /** In-memory event log shown in [MainActivity]. Main thread only. */
 object EventLog {
-    const val TAG = "TabletEdge"
+    const val TAG = "DroidLeap"
     private const val MAX_LINES = 200
     private val timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
     private val lines = ArrayDeque<String>()

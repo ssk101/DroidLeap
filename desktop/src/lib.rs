@@ -1,4 +1,4 @@
-//! tablet-edge: move the mouse off a screen edge to use it, and the keyboard,
+//! DroidLeap: move the mouse off a screen edge to use it, and the keyboard,
 //! on an Android tablet connected over USB.
 
 pub mod aoa;

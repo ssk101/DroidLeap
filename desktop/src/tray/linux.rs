@@ -34,11 +34,11 @@ impl ksni::Tray for Tray {
     const MENU_ON_ACTIVATE: bool = true;
 
     fn id(&self) -> String {
-        "tablet-edge".into()
+        "droidleap".into()
     }
 
     fn title(&self) -> String {
-        "Tablet Edge".into()
+        "DroidLeap".into()
     }
 
     fn icon_pixmap(&self) -> Vec<Icon> {
@@ -47,7 +47,7 @@ impl ksni::Tray for Tray {
 
     fn tool_tip(&self) -> ksni::ToolTip {
         ksni::ToolTip {
-            title: "Tablet Edge".into(),
+            title: "DroidLeap".into(),
             description: self.status.lines().join("\n"),
             ..Default::default()
         }

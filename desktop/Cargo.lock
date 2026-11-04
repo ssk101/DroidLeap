@@ -296,6 +296,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 
 [[package]]
+name = "droidleap"
+version = "0.4.0"
+dependencies = [
+ "ashpd",
+ "directories",
+ "embed-manifest",
+ "futures-util",
+ "jiff",
+ "ksni",
+ "mdns-sd",
+ "nusb",
+ "png",
+ "reis",
+ "serde",
+ "serde_json",
+ "tokio",
+ "toml 1.1.8+spec-1.1.0",
+ "tray-icon",
+ "windows-sys",
+]
+
+[[package]]
 name = "embed-manifest"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1509,28 +1531,6 @@ dependencies = [
  "pkg-config",
  "toml 0.8.2",
  "version-compare",
-]
-
-[[package]]
-name = "tablet-edge"
-version = "0.4.0"
-dependencies = [
- "ashpd",
- "directories",
- "embed-manifest",
- "futures-util",
- "jiff",
- "ksni",
- "mdns-sd",
- "nusb",
- "png",
- "reis",
- "serde",
- "serde_json",
- "tokio",
- "toml 1.1.8+spec-1.1.0",
- "tray-icon",
- "windows-sys",
 ]
 
 [[package]]

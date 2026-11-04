@@ -1,4 +1,4 @@
-package io.github.ssk101.tabletedge
+package io.github.ssk101.droidleap
 
 import android.accessibilityservice.AccessibilityService
 import android.content.res.Configuration

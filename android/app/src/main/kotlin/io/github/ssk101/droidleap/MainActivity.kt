@@ -1,4 +1,4 @@
-package io.github.ssk101.tabletedge
+package io.github.ssk101.droidleap
 
 import android.app.Activity
 import android.content.Intent
@@ -20,7 +20,7 @@ class MainActivity : Activity() {
         val pad = (16 * resources.displayMetrics.density).toInt()
 
         val hint = TextView(this).apply {
-            text = "Turn on Tablet Edge under Accessibility, then start tablet-edge on the PC."
+            text = "Turn on DroidLeap under Accessibility, then start DroidLeap on the PC."
         }
         val accessibilityButton = Button(this).apply {
             text = "Accessibility settings"

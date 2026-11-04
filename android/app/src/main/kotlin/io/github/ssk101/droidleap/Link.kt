@@ -1,4 +1,4 @@
-package io.github.ssk101.tabletedge
+package io.github.ssk101.droidleap
 
 import android.content.Context
 import android.net.nsd.NsdManager
@@ -57,7 +57,7 @@ class Link(private val context: Context, private val listener: Listener) {
     }
 
     fun start() {
-        thread(name = "tablet-edge-accept") { acceptLoop() }
+        thread(name = "droidleap-accept") { acceptLoop() }
     }
 
     fun stop() {
@@ -119,7 +119,7 @@ class Link(private val context: Context, private val listener: Listener) {
             client = socket
             val peer = socket.inetAddress.hostAddress ?: "?"
             main.post { listener.onConnected(peer) }
-            thread(name = "tablet-edge-read") { readLoop(socket) }
+            thread(name = "droidleap-read") { readLoop(socket) }
         }
     }
 
@@ -155,7 +155,7 @@ class Link(private val context: Context, private val listener: Listener) {
 
     companion object {
         const val PROTOCOL_VERSION = 1
-        const val SERVICE_TYPE = "_tablet-edge._tcp"
+        const val SERVICE_TYPE = "_droidleap._tcp"
         private const val MAX_LINE = 4096
 
         /** Reads one line, or null at end of stream. Rejects lines over [MAX_LINE] so a peer can't exhaust memory. */

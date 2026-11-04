@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::geometry::Side;
 
 const HEADER: &str = "\
-# tablet-edge settings. The tray menu rewrites this file; comments are not kept.
+# DroidLeap settings. The tray menu rewrites this file; comments are not kept.
 #
 # side         desktop edge that leads to the tablet: left, right, top or bottom
 # threshold_px push through the edge before switching, in pixels; 0 switches on touch
@@ -107,7 +107,7 @@ pub struct Paths {
 
 impl Paths {
     pub fn new() -> Result<Paths, String> {
-        let dirs = ProjectDirs::from("io.github", "ssk101", "tablet-edge")
+        let dirs = ProjectDirs::from("io.github", "ssk101", "droidleap")
             .ok_or("cannot determine the home directory")?;
         let config_dir = dirs.config_dir();
         let state_dir = dirs.state_dir().unwrap_or(dirs.data_local_dir());
@@ -116,8 +116,8 @@ impl Paths {
         }
         Ok(Paths {
             config_file: config_dir.join("config.toml"),
-            log_file: state_dir.join("tablet-edge.log"),
-            lock_file: state_dir.join("tablet-edge.lock"),
+            log_file: state_dir.join("droidleap.log"),
+            lock_file: state_dir.join("droidleap.lock"),
             restore_token_file: state_dir.join("portal-restore-token"),
         })
     }
@@ -129,7 +129,7 @@ mod tests {
 
     fn temp_file(name: &str) -> PathBuf {
         let dir =
-            std::env::temp_dir().join(format!("tablet-edge-test-{}-{name}", std::process::id()));
+            std::env::temp_dir().join(format!("droidleap-test-{}-{name}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         dir.join("config.toml")
     }
@@ -166,7 +166,7 @@ mod tests {
         assert!(
             fs::read_to_string(&path)
                 .unwrap()
-                .starts_with("# tablet-edge settings")
+                .starts_with("# DroidLeap settings")
         );
     }
 
