@@ -1,5 +1,7 @@
 //! DroidLeap: move the mouse off a screen edge to use it, and the keyboard,
-//! on an Android tablet connected over USB.
+//! on an Android device connected over USB.
+//!
+//! "Tablet" in the code names that device's role, whether phone or tablet.
 
 pub mod aoa;
 pub mod capture;

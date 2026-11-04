@@ -23,7 +23,7 @@ cat > "$STAGE/usr/share/applications/$NAME.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=DroidLeap
-Comment=Move the mouse off a screen edge to control an Android tablet over USB
+Comment=Move the mouse off a screen edge to control an Android device over USB
 Exec=$NAME
 Icon=$NAME
 Terminal=false
@@ -58,13 +58,13 @@ Replaces: tablet-edge
 Section: utils
 Priority: optional
 Installed-Size: $(du -sk "$STAGE/usr" | cut -f1)
-Homepage: https://github.com/ssk101/droidleap
-Description: Use an Android tablet as a screen-edge extension over USB
+Homepage: https://github.com/ssk101/DroidLeap
+Description: Use an Android device as a screen-edge extension over USB
  Moving the mouse off a chosen desktop edge hands mouse and keyboard to an
- Android tablet connected over USB (Android Open Accessory HID). Pause, or
- moving back through the tablet's edge (with the DroidLeap Android app),
- hands them back. Runs in the system tray. Needs a Wayland desktop with the
- InputCapture portal (GNOME 46+).
+ Android phone or tablet connected over USB (Android Open Accessory HID).
+ Pause, or moving back through the device's edge (with the DroidLeap Android
+ app), hands them back. Runs in the system tray. Needs a Wayland desktop with
+ the InputCapture portal (GNOME 46+).
 EOF
 
 dpkg-deb --root-owner-group --build "$STAGE" "$OUT/${NAME}_${VERSION}_${ARCH}.deb"

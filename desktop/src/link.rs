@@ -197,7 +197,7 @@ async fn connect(addrs: &[SocketAddr]) -> Result<TcpStream, String> {
         }
     }
     Err(format!(
-        "could not connect to the tablet app ({})",
+        "could not connect to the Android app ({})",
         errors.join(", ")
     ))
 }

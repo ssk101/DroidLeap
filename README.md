@@ -3,13 +3,13 @@
 <img src="icon.png" width="96" align="right" alt="">
 
 Move your mouse pointer off an edge of your desktop and it carries on onto your
-Android tablet, as if the tablet were another monitor. Your keyboard follows.
-Move back through the tablet's edge, or press **Pause**, to return.
+Android phone or tablet, as if it were another monitor. Your keyboard follows.
+Move back through the device's edge, or press **Pause**, to return.
 
-The PC presents itself to the tablet as a USB mouse and keyboard (Android Open
-Accessory HID), so the tablet needs no driver, root or screen mirroring. A
-small companion app on the tablet reports when its pointer reaches the edge
-facing the PC, over the local network.
+The PC presents itself to the device as a USB mouse and keyboard (Android Open
+Accessory HID), so it needs no driver, root or screen mirroring. A small
+companion app on the device reports when its pointer reaches the edge facing
+the PC, over the local network.
 
 ## Requirements
 
@@ -17,10 +17,10 @@ facing the PC, over the local network.
   Ubuntu 24.04 or later for the `.deb`. The tray icon needs the AppIndicator
   extension on GNOME (enabled by default on Ubuntu).
 - **Windows:** Windows 10 or 11, x64.
-- **Tablet:** Android 11 or later, connected by USB, with USB debugging enabled.
-  Close adb (`adb kill-server`), Android Studio and scrcpy while DroidLeap runs:
-  they compete for the same USB interface.
-- PC and tablet on the same network, for returning through the tablet's edge.
+- **Android device:** Android 11 or later, connected by USB, with USB debugging
+  enabled. Close adb (`adb kill-server`), Android Studio and scrcpy while
+  DroidLeap runs: they compete for the same USB interface.
+- PC and device on the same network, for returning through the device's edge.
   Without it, **Pause** still brings the mouse back.
 
 ## Setup
@@ -28,24 +28,25 @@ facing the PC, over the local network.
 Download the files from the [latest release](../../releases/latest).
 
 1. Install the desktop app: the `.deb` on Linux, or run the `.exe` on
-   Windows. It lives in the system tray.
-2. Install the tablet app with [Obtainium](https://github.com/ImranR98/Obtainium):
+   Windows. It lives in the system tray. The `.exe` isn't code-signed yet, so
+   Windows warns on first launch: choose **More info > Run anyway**.
+2. Install the Android app with [Obtainium](https://github.com/ImranR98/Obtainium):
    add the app with the URL `https://github.com/ssk101/DroidLeap`, and it keeps
    DroidLeap updated from these releases. Or install the `.apk` directly.
    Then turn DroidLeap on under **Settings > Accessibility**. It only draws a
    thin strip along one screen edge; it doesn't read screen content.
    If the switch is greyed out, open **Settings > Apps > DroidLeap**, tap **⋮**
    and choose **Allow restricted settings**.
-3. In the tray menu, pick the screen edge the tablet sits beyond.
+3. In the tray menu, pick the screen edge the device sits beyond.
 
 | Action | How |
 | --- | --- |
-| Move to the tablet | Push the pointer through the chosen desktop edge |
-| Come back | Move through the tablet's opposite edge, or press **Pause** |
+| Move to the device | Push the pointer through the chosen desktop edge |
+| Come back | Move through the device's opposite edge, or press **Pause** |
 | Pause the whole thing | Tray menu > **Enabled** |
 
 On Linux, GNOME asks once for permission to capture input. On Windows, the
-firewall may ask once about network access; allow it for the tablet app to be found.
+firewall may ask once about network access; allow it for the Android app to be found.
 
 ## Settings
 
@@ -54,10 +55,10 @@ The tray menu changes the common settings; the rest are in the settings file
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `side` | `left` | Desktop edge that leads to the tablet: `left`, `right`, `top` or `bottom` |
+| `side` | `left` | Desktop edge that leads to the Android device: `left`, `right`, `top` or `bottom` |
 | `threshold_px` | `0` | How far to push through the edge before switching, in pixels; 0 switches on touch |
 | `timeout_ms` | `1000` | Time window in which the push must add up |
-| `serial` | *(empty)* | USB serial number of the tablet; only needed with several Android devices plugged in |
+| `serial` | *(empty)* | USB serial number of the Android device; only needed with several plugged in |
 | `enabled` | `true` | `false` keeps all input on the desktop |
 
 | | Settings file | Log |
@@ -68,12 +69,12 @@ The tray menu changes the common settings; the rest are in the settings file
 ## Privacy and security
 
 Mouse and keyboard input only travels over the USB cable. The network link to
-the tablet app carries edge positions only, and is not authenticated yet:
+the Android app carries edge positions only, and is not authenticated yet:
 another device on your network could make the mouse return to the PC early.
 
 ## Building
 
-The desktop app is Rust (`desktop/`), the tablet app Kotlin (`android/`).
+The desktop app is Rust (`desktop/`), the Android app Kotlin (`android/`).
 
 ```sh
 cd desktop
@@ -95,7 +96,10 @@ To release, set the same version in `desktop/Cargo.toml` and the Android
 `versionName` (and raise `versionCode`), then push a tag `v<version>`. The
 workflow builds a signed APK and creates a draft release with all three files.
 Signing needs the repository secrets `ANDROID_KEYSTORE_BASE64`,
-`ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS`.
+`ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS`. The Windows exe is signed
+through [SignPath Foundation](https://signpath.org) once the repository
+variables `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG` and
+`SIGNPATH_SIGNING_POLICY_SLUG` and the secret `SIGNPATH_API_TOKEN` are set.
 
 The icon is generated by `make_icon.py` (requires [Pillow](https://pypi.org/project/pillow/)).
 

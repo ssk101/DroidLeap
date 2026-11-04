@@ -1,5 +1,5 @@
 //! DroidLeap: move the mouse off a screen edge to use it, and the keyboard,
-//! on an Android tablet connected over USB.
+//! on an Android device connected over USB.
 
 // Release builds on Windows are tray apps without a console window.
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]

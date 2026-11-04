@@ -134,7 +134,7 @@ impl UsbTablet {
         self.retry_at = Some(Instant::now());
         self.close()
             .await
-            .then(|| Change::Lost("a different tablet was selected".into()))
+            .then(|| Change::Lost("a different Android device was selected".into()))
     }
 
     /// Unregisters the HID devices. Returns whether a tablet was connected.
@@ -161,7 +161,7 @@ impl UsbTablet {
             }
             Err(e) => {
                 if self.last_error.as_ref() != Some(&e) {
-                    log(format!("tablet: {e}"));
+                    log(format!("Android device: {e}"));
                     self.last_error = Some(e);
                 }
                 if self.hotplug.is_none() {

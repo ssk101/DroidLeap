@@ -29,6 +29,29 @@ jobs:
         run: cargo test --manifest-path desktop/Cargo.toml
       - name: Build
         run: cargo build --release --manifest-path desktop/Cargo.toml
+      # Code signing through SignPath Foundation; skipped until the repository variables are set.
+      - name: Upload the unsigned exe for signing
+        id: unsigned
+        if: github.ref_type == 'tag' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: droidleap-windows-x64-unsigned
+          path: desktop/target/release/droidleap.exe
+          if-no-files-found: error
+      - name: Sign the exe
+        if: steps.unsigned.outcome == 'success'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: desktop/target/signed
+      - name: Use the signed exe
+        if: steps.unsigned.outcome == 'success'
+        run: Move-Item -Force desktop/target/signed/droidleap.exe desktop/target/release/droidleap.exe
       - uses: actions/upload-artifact@v4
         with:
           name: droidleap-windows-x64

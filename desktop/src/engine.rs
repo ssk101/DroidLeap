@@ -67,16 +67,16 @@ impl Status {
     pub fn lines(&self) -> Vec<String> {
         let mut lines = vec![
             match &self.tablet {
-                Some(name) => format!("Tablet: {name}"),
-                None => "Tablet: not connected over USB".into(),
+                Some(name) => format!("Device: {name}"),
+                None => "Device: not connected over USB".into(),
             },
             match &self.link {
-                Some(name) => format!("Tablet app: connected ({name})"),
-                None => "Tablet app: not found on the network".into(),
+                Some(name) => format!("Android app: connected ({name})"),
+                None => "Android app: not found on the network".into(),
             },
         ];
         if self.on_tablet {
-            lines.push("Input is on the tablet (Pause returns)".into());
+            lines.push("Input is on the device (Pause returns)".into());
         }
         if let Some(problem) = &self.problem {
             lines.push(problem.clone());
@@ -175,7 +175,7 @@ impl Engine {
         let mdns = ServiceDaemon::new()
             .inspect_err(|e| {
                 log(format!(
-                    "mDNS unavailable, the tablet can only hand back with Pause: {e}"
+                    "mDNS unavailable, the Android device can only hand back with Pause: {e}"
                 ))
             })
             .ok();
@@ -445,7 +445,7 @@ impl Engine {
     }
 
     fn took_over(&self) {
-        log("input on the tablet");
+        log("input on the Android device");
         self.set_status(|s| s.on_tablet = true);
     }
 
@@ -490,7 +490,7 @@ impl Engine {
                     Some(along) => {
                         let to = return_point(side, monitor, along);
                         self.release(capture, session, to).await;
-                        log("input back on the desktop (tablet edge)");
+                        log("input back on the desktop (device edge)");
                     }
                     None => self.mouse.add_motion(dx, dy),
                 }
@@ -528,12 +528,12 @@ impl Engine {
         let tablet_edge = self.config.side.opposite();
         match event {
             LinkEvent::Connected(name) => {
-                log(format!("tablet app connected: {name}"));
+                log(format!("Android app connected: {name}"));
                 self.set_status(|s| s.link = Some(name));
             }
             LinkEvent::Disconnected(reason) => {
                 if self.status.borrow().link.is_some() {
-                    log(format!("tablet app disconnected: {reason}"));
+                    log(format!("Android app disconnected: {reason}"));
                 }
                 session.tablet_at_edge = None;
                 self.set_status(|s| s.link = None);
@@ -546,11 +546,11 @@ impl Engine {
                 rotation,
             }) => {
                 log(format!(
-                    "tablet app {app}, screen {width}x{height} rotated {rotation}°"
+                    "Android app {app}, screen {width}x{height} rotated {rotation}°"
                 ));
                 if version != link::PROTOCOL_VERSION {
                     log(format!(
-                        "tablet app speaks protocol {version}, this app {}",
+                        "Android app speaks protocol {version}, this app {}",
                         link::PROTOCOL_VERSION
                     ));
                 }
@@ -599,11 +599,11 @@ impl Engine {
     fn on_usb_change(&mut self, change: Change) {
         match change {
             Change::Connected(name) => {
-                log(format!("tablet connected: {name}"));
+                log(format!("Android device connected: {name}"));
                 self.set_status(|s| s.tablet = Some(name));
             }
             Change::Lost(reason) => {
-                log(format!("tablet lost: {reason}"));
+                log(format!("Android device lost: {reason}"));
                 self.mouse.release_all();
                 self.keyboard.release_all();
                 self.set_status(|s| s.tablet = None);
@@ -633,7 +633,7 @@ impl Engine {
                 tablet.send(MOUSE_ID, &mouse).await
             };
             if let Err(e) = lifted.await {
-                log(format!("could not release keys on the tablet: {e}"));
+                log(format!("could not release keys on the Android device: {e}"));
             }
         }
     }
@@ -677,11 +677,11 @@ impl Engine {
                 "push through"
             };
             log(format!(
-                "ready: {how} the {:?} edge to move to the tablet",
+                "ready: {how} the {:?} edge to move to the Android device",
                 self.config.side
             ));
         } else {
-            log("waiting for the tablet");
+            log("waiting for the Android device");
         }
     }
 

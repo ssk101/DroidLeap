@@ -14,11 +14,11 @@ use crate::geometry::Side;
 const HEADER: &str = "\
 # DroidLeap settings. The tray menu rewrites this file; comments are not kept.
 #
-# side         desktop edge that leads to the tablet: left, right, top or bottom
+# side         desktop edge that leads to the Android device: left, right, top or bottom
 # threshold_px push through the edge before switching, in pixels; 0 switches on touch
 # timeout_ms   time window in which the push must add up
-# serial       USB serial number of the tablet; empty picks the only Android
-#              device with USB debugging on
+# serial       USB serial number of the Android device; empty picks the only one
+#              with USB debugging on
 # enabled      false keeps all input on the desktop
 
 ";

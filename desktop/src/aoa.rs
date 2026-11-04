@@ -1,5 +1,6 @@
-//! Android Open Accessory 2.0 HID: the tablet sees us as a USB mouse and
-//! keyboard, with no app or USB debugging needed on the tablet.
+//! Android Open Accessory 2.0 HID: the device sees us as a USB mouse and
+//! keyboard, with no app needed on it. USB debugging must be on, because its
+//! ADB interface is how we recognise Android devices.
 //! <https://source.android.com/docs/core/interaction/accessories/aoa2#hid-support>
 //!
 //! On Windows, control transfers must go through a claimed interface with the
@@ -174,7 +175,7 @@ async fn find(serial: Option<&str>) -> Result<DeviceInfo, String> {
     match android.len() {
         1 => Ok(android.remove(0)),
         0 => Err(
-            "no Android device with USB debugging found; plug in the tablet, or give its \
+            "no Android device with USB debugging found; plug one in, or give its \
                   USB serial number (see `lsusb -v`)"
                 .into(),
         ),
@@ -207,7 +208,7 @@ async fn control_pipe(
         .find(|i| (i.class(), i.subclass(), i.protocol()) == ADB_INTERFACE)
         .map(|i| i.interface_number())
         .ok_or_else(|| {
-            format!("{name} shows no ADB interface: turn on USB debugging on the tablet")
+            format!("{name} shows no ADB interface: turn on USB debugging on the device")
         })?;
     device.claim_interface(number).await.map_err(|e| {
         format!(
