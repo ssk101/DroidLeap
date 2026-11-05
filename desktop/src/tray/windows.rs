@@ -16,7 +16,7 @@ use windows_sys::Win32::{
     },
 };
 
-use super::{MENU_TITLE_SIDE, SIDES, app_icon_rgba, open_with};
+use super::{APP_TITLE, MENU_TITLE_SIDE, SIDES, app_icon_rgba, open_with};
 use crate::{
     config::Paths,
     engine::{Command, Status},
@@ -113,7 +113,7 @@ fn update(tray: &TrayIcon, status: &Status) {
 
 /// Windows cuts tray tooltips at 127 characters.
 fn tooltip(status: &Status) -> String {
-    let text = format!("DroidLeap\n{}", status.lines().join("\n"));
+    let text = format!("{APP_TITLE}\n{}", status.lines().join("\n"));
     text.chars().take(127).collect()
 }
 
@@ -124,7 +124,7 @@ fn side_id(label: &str) -> String {
 fn menu(status: &Status) -> Result<Menu, String> {
     let menu = Menu::new();
     let error = |e: tray_icon::menu::Error| e.to_string();
-    for line in status.lines() {
+    for line in std::iter::once(APP_TITLE.to_string()).chain(status.lines()) {
         menu.append(&MenuItem::new(line.replace('&', "&&"), false, None))
             .map_err(error)?;
     }

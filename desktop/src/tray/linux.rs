@@ -9,7 +9,7 @@ use ksni::{
 };
 use tokio::sync::{mpsc, watch};
 
-use super::{MENU_TITLE_SIDE, SIDES, app_icon_rgba, open_with};
+use super::{APP_TITLE, MENU_TITLE_SIDE, SIDES, app_icon_rgba, open_with};
 use crate::{
     config::Paths,
     engine::{Command, Status},
@@ -47,17 +47,15 @@ impl ksni::Tray for Tray {
 
     fn tool_tip(&self) -> ksni::ToolTip {
         ksni::ToolTip {
-            title: "DroidLeap".into(),
+            title: APP_TITLE.into(),
             description: self.status.lines().join("\n"),
             ..Default::default()
         }
     }
 
     fn menu(&self) -> Vec<MenuItem<Self>> {
-        let mut items: Vec<MenuItem<Self>> = self
-            .status
-            .lines()
-            .into_iter()
+        let mut items: Vec<MenuItem<Self>> = std::iter::once(APP_TITLE.to_string())
+            .chain(self.status.lines())
             .map(|label| {
                 StandardItem {
                     label,

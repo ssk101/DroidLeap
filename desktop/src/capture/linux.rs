@@ -13,12 +13,15 @@ use std::{
     time::Duration,
 };
 
-use ashpd::desktop::{
-    PersistMode, Session,
-    input_capture::{
-        ActivatedBarrier, Barrier, BarrierID, BarrierPosition, Capabilities, CreateSessionOptions,
-        InputCapture, ReleaseOptions, StartOptions,
+use ashpd::{
+    desktop::{
+        PersistMode, Session,
+        input_capture::{
+            ActivatedBarrier, Barrier, BarrierID, BarrierPosition, Capabilities,
+            CreateSessionOptions, InputCapture, ReleaseOptions, StartOptions,
+        },
     },
+    zbus::{self, zvariant::OwnedObjectPath},
 };
 use futures_util::StreamExt;
 use reis::{
@@ -35,6 +38,9 @@ use crate::{
 };
 
 const CLOSE_TIMEOUT: Duration = Duration::from_secs(2);
+/// A permission dialog may be waiting if the portal hasn't answered by then.
+const PERMISSION_NOTICE_DELAY: Duration = Duration::from_secs(3);
+const LOGIND: &str = "org.freedesktop.login1";
 
 enum Request {
     SetEdge(Side),
@@ -118,7 +124,10 @@ async fn run(
     let portal = InputCapture::with_connection(bus)
         .await
         .map_err(|e| format!("InputCapture portal unavailable: {e}"))?;
-    let session = open_session(&portal, token_file).await?;
+    if let Err(e) = wait_until_unlocked().await {
+        log(format!("cannot tell whether the screen is locked: {e}"));
+    }
+    let session = open_session(&portal, token_file, inputs).await?;
     let result = serve(&portal, &session, requests, inputs).await;
     if let Err(e) = session.close().await {
         log(format!("could not close the input capture session: {e}"));
@@ -372,9 +381,43 @@ fn translate(event: EiEvent, context: &ei::Context) -> Result<Option<Input>, Cap
 }
 
 /// Creates a portal session, reusing a saved permission when the desktop supports that.
+/// Returns once the graphical session is unlocked. The desktop refuses new capture
+/// sessions while locked, and a refused attempt uses up the saved permission token.
+async fn wait_until_unlocked() -> zbus::Result<()> {
+    let system = zbus::Connection::system().await?;
+    let manager = zbus::Proxy::new(
+        &system,
+        LOGIND,
+        "/org/freedesktop/login1",
+        "org.freedesktop.login1.Manager",
+    )
+    .await?;
+    // Apps started from the desktop run outside the login session, so go through the user.
+    let user: OwnedObjectPath = manager.call("GetUserByPID", &(std::process::id())).await?;
+    let user = zbus::Proxy::new(&system, LOGIND, user, "org.freedesktop.login1.User").await?;
+    let (_, session): (String, OwnedObjectPath) = user.get_property("Display").await?;
+    if session.as_str() == "/" {
+        return Ok(()); // no graphical session to watch
+    }
+    let session =
+        zbus::Proxy::new(&system, LOGIND, session, "org.freedesktop.login1.Session").await?;
+    let mut changes = session.receive_property_changed::<bool>("LockedHint").await;
+    if !session.get_property::<bool>("LockedHint").await? {
+        return Ok(());
+    }
+    log("screen locked; input capture resumes after unlocking");
+    while let Some(change) = changes.next().await {
+        if !change.get().await? {
+            return Ok(());
+        }
+    }
+    Ok(())
+}
+
 async fn open_session(
     portal: &InputCapture,
     token_file: &Path,
+    inputs: &Inputs,
 ) -> Result<Session<InputCapture>, CaptureError> {
     let capabilities = Capabilities::Pointer | Capabilities::Keyboard;
     let failed = |e: ashpd::Error| match e {
@@ -385,9 +428,6 @@ async fn open_session(
         .ok()
         .map(|t| t.trim().to_string())
         .filter(|t| !t.is_empty());
-    if token.is_none() {
-        log("asking for permission to capture input; the dialog may open behind other windows");
-    }
 
     let session = match portal.create_session2(Default::default()).await {
         Ok(session) => session,
@@ -403,11 +443,21 @@ async fn open_session(
         .set_capabilities(capabilities)
         .set_restore_token(token)
         .set_persist_mode(PersistMode::ExplicitlyRevoked);
-    let response = portal
-        .start(&session, None, options)
-        .await
-        .and_then(|r| r.response())
-        .map_err(failed)?;
+    // Even with a token the portal may ask again, e.g. after a refused attempt used it up.
+    let response = {
+        let mut start = pin!(portal.start(&session, None, options));
+        match tokio::time::timeout(PERMISSION_NOTICE_DELAY, &mut start).await {
+            Ok(response) => response,
+            Err(_) => {
+                log(
+                    "waiting for permission to capture input; the dialog may be behind other windows",
+                );
+                let _ = inputs.send(Ok(Input::AwaitingPermission));
+                start.await
+            }
+        }
+    };
+    let response = response.and_then(|r| r.response()).map_err(failed)?;
     match response.restore_token() {
         Some(token) => save_token(token_file, token),
         None => {

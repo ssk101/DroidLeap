@@ -21,6 +21,8 @@ const SIDES: [(Side, &str); 4] = [
 
 const MENU_TITLE_SIDE: &str = "Device is beyond the screen's";
 
+const APP_TITLE: &str = concat!("DroidLeap ", env!("CARGO_PKG_VERSION"));
+
 /// The app icon as 8-bit RGBA, with its width and height.
 fn app_icon_rgba() -> Result<(Vec<u8>, u32, u32), String> {
     decode_png_rgba(include_bytes!("../../../icon.png"))

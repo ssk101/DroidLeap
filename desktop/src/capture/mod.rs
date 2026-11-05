@@ -55,6 +55,8 @@ pub enum Input {
     Released,
     /// Monitors were added, removed or moved; a [`Input::Watching`] follows.
     MonitorsChanged,
+    /// The desktop is asking the user for permission; a [`Input::Watching`] follows if granted.
+    AwaitingPermission,
     /// The user is logging out.
     Quit,
 }

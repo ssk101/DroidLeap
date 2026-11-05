@@ -408,6 +408,13 @@ impl Engine {
                 log("monitors changed");
                 self.hand_back_now(capture, session).await;
             }
+            Input::AwaitingPermission => self.set_status(|s| {
+                s.problem = Some(
+                    "Waiting for permission to capture input: look for a dialog, \
+                     it may be behind other windows"
+                        .into(),
+                )
+            }),
             Input::Quit => {
                 self.hand_back_now(capture, session).await;
                 return Some(End::Quit);
