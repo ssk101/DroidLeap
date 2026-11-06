@@ -9,6 +9,7 @@ use std::{net::SocketAddr, time::Duration};
 
 use mdns_sd::{ServiceDaemon, ServiceEvent};
 use serde::{Deserialize, Serialize};
+use socket2::{SockRef, TcpKeepalive};
 use tokio::{
     io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
@@ -22,6 +23,11 @@ pub const PROTOCOL_VERSION: u32 = 1;
 const SERVICE_TYPE: &str = "_droidleap._tcp.local.";
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
 const RETRY_DELAY: Duration = Duration::from_secs(3);
+/// The PC only reads after `hello`, so without keepalive a tablet that reboots without closing the
+/// connection leaves us waiting on a dead socket forever.
+const KEEPALIVE: TcpKeepalive = TcpKeepalive::new()
+    .with_time(Duration::from_secs(10))
+    .with_interval(Duration::from_secs(5));
 /// Longest accepted message line, so a peer can't make us buffer without limit.
 const MAX_LINE: usize = 4096;
 
@@ -120,6 +126,9 @@ async fn session(
     stream
         .set_nodelay(true)
         .map_err(|e| format!("set_nodelay: {e}"))?;
+    SockRef::from(&stream)
+        .set_tcp_keepalive(&KEEPALIVE)
+        .map_err(|e| format!("set_tcp_keepalive: {e}"))?;
     let (read, mut write) = stream.into_split();
 
     let hello = serde_json::to_string(&PcMessage::Hello {
