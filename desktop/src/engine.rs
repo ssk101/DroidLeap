@@ -28,6 +28,9 @@ use crate::{
 /// Moving this far back from the edge while pushing hands the pointer back.
 const AWAY_PX: f64 = 3.0;
 const SESSION_RETRY_DELAY: Duration = Duration::from_secs(5);
+/// How long a push towards the device's return edge stays valid while the device's report that the
+/// pointer arrived is on its way. The report crosses Wi-Fi, so it can trail a flick that already stopped.
+const EDGE_REPORT_LAG: Duration = Duration::from_millis(300);
 
 /// Requests from the user interface.
 #[derive(Debug)]
@@ -145,6 +148,8 @@ enum State {
         monitor: Rect,
         /// Push through the tablet's return edge, measured like the takeover push.
         back: Pressure,
+        /// Last motion towards the tablet's return edge.
+        pushed_back: Option<Instant>,
     },
 }
 
@@ -313,7 +318,9 @@ impl Engine {
                         return Ok(end);
                     }
                 }
-                Some(event) = session.link.events.recv() => self.on_link(&mut session, event),
+                Some(event) = session.link.events.recv() => {
+                    self.on_link(capture, &mut session, event).await
+                }
                 _ = tick.tick() => self.on_tick(capture, &mut session).await,
             }
         }
@@ -445,6 +452,7 @@ impl Engine {
                 origin,
                 monitor,
                 back: Pressure::new(self.config.timeout()),
+                pushed_back: None,
             }
         } else {
             State::Pressing {
@@ -484,6 +492,7 @@ impl Engine {
                         origin: *origin,
                         monitor: *monitor,
                         back: Pressure::new(self.config.timeout()),
+                        pushed_back: None,
                     };
                     self.took_over();
                 } else if push < 0.0 {
@@ -494,9 +503,17 @@ impl Engine {
                     }
                 }
             }
-            State::Captured { monitor, back, .. } => {
+            State::Captured {
+                monitor,
+                back,
+                pushed_back,
+                ..
+            } => {
                 // Heading back to the desktop is the opposite of the takeover push.
                 let push_back = -side.split(dx, dy).0;
+                if push_back > 0.0 {
+                    *pushed_back = Some(now);
+                }
                 let returning = session
                     .tablet_at_edge
                     .filter(|_| push_back > 0.0 && back.add(now, push_back) >= threshold);
@@ -541,7 +558,7 @@ impl Engine {
         }
     }
 
-    fn on_link(&mut self, session: &mut Session, event: LinkEvent) {
+    async fn on_link(&mut self, capture: &Capture, session: &mut Session, event: LinkEvent) {
         let tablet_edge = self.config.side.opposite();
         match event {
             LinkEvent::Connected(name) => {
@@ -581,8 +598,35 @@ impl Engine {
                     HoverState::Enter | HoverState::Move => Some(along.clamp(0.0, 1.0)),
                     HoverState::Exit => None,
                 };
+                self.return_if_just_pushed(capture, session).await;
             }
         }
+    }
+
+    /// With a touch-to-switch edge, a push that ended just before the device reported its pointer
+    /// at the edge still hands input back, so a flick doesn't have to be repeated.
+    async fn return_if_just_pushed(&mut self, capture: &Capture, session: &mut Session) {
+        let (
+            State::Captured {
+                monitor,
+                pushed_back: Some(pushed),
+                ..
+            },
+            Some(along),
+        ) = (&session.state, session.tablet_at_edge)
+        else {
+            return;
+        };
+        if self.config.threshold_px > 0.0 || pushed.elapsed() > EDGE_REPORT_LAG {
+            return;
+        }
+        let to = return_point(self.config.side, monitor, along);
+        let lag = pushed.elapsed();
+        self.release(capture, session, to).await;
+        log(format!(
+            "input back on the desktop (device edge, reported {} ms after the push)",
+            lag.as_millis()
+        ));
     }
 
     async fn on_tick(&mut self, capture: &Capture, session: &mut Session) {

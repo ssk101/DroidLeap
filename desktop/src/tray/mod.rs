@@ -6,6 +6,8 @@ mod linux;
 pub use linux::spawn;
 
 #[cfg(windows)]
+mod log_window;
+#[cfg(windows)]
 mod windows;
 #[cfg(windows)]
 pub use windows::spawn;

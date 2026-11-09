@@ -1,7 +1,9 @@
 //! Log lines go to stdout and to a log file capped at about [`MAX_BYTES`]
-//! (the previous file is kept as `<name>.1`).
+//! (the previous file is kept as `<name>.1`). The latest [`HISTORY_LINES`]
+//! are also kept in memory, for [`lines_since`].
 
 use std::{
+    collections::VecDeque,
     fmt::Display,
     fs::{self, File, OpenOptions},
     io::{self, Write},
@@ -10,8 +12,49 @@ use std::{
 };
 
 const MAX_BYTES: u64 = 1 << 20;
+const HISTORY_LINES: usize = 2000;
 
 static FILE: Mutex<Option<LogFile>> = Mutex::new(None);
+static HISTORY: Mutex<History> = Mutex::new(History::new());
+
+/// The newest lines, and how many were ever logged (so readers can ask for what's new).
+struct History {
+    lines: VecDeque<String>,
+    total: usize,
+}
+
+impl History {
+    const fn new() -> Self {
+        History {
+            lines: VecDeque::new(),
+            total: 0,
+        }
+    }
+
+    fn push(&mut self, line: String) {
+        if self.lines.len() == HISTORY_LINES {
+            self.lines.pop_front();
+        }
+        self.lines.push_back(line);
+        self.total += 1;
+    }
+
+    /// Lines logged after the first `seen` ones that are still held, and the new count to pass next time.
+    fn since(&self, seen: usize) -> (Vec<String>, usize) {
+        let oldest = self.total - self.lines.len();
+        let skip = seen.saturating_sub(oldest).min(self.lines.len());
+        (self.lines.iter().skip(skip).cloned().collect(), self.total)
+    }
+}
+
+/// Log lines (without line ends) not yet seen, plus the count to pass on the next call.
+/// Start with 0 to get the whole history.
+pub fn lines_since(seen: usize) -> (Vec<String>, usize) {
+    HISTORY
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .since(seen)
+}
 
 /// Starts also writing the log to `path`.
 pub fn init(path: &Path) -> io::Result<()> {
@@ -24,6 +67,10 @@ pub fn log(message: impl Display) {
     let time = jiff::Zoned::now().strftime("%Y-%m-%d %H:%M:%S%.3f");
     let line = format!("{time}  {message}\n");
     print!("{line}");
+    HISTORY
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push(line.trim_end().to_string());
     if let Some(file) = FILE.lock().unwrap_or_else(|e| e.into_inner()).as_mut()
         && let Err(e) = file.write(&line)
     {
@@ -70,6 +117,34 @@ fn rotated(path: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn history_hands_out_only_unseen_lines() {
+        let mut history = History::new();
+        for n in 0..3 {
+            history.push(format!("line {n}"));
+        }
+        let (all, seen) = history.since(0);
+        assert_eq!(all, ["line 0", "line 1", "line 2"]);
+        assert_eq!(seen, 3);
+        assert!(history.since(seen).0.is_empty());
+        history.push("line 3".into());
+        assert_eq!(history.since(seen).0, ["line 3"]);
+    }
+
+    #[test]
+    fn history_drops_the_oldest_lines_when_full() {
+        let mut history = History::new();
+        for n in 0..HISTORY_LINES + 5 {
+            history.push(n.to_string());
+        }
+        let (lines, seen) = history.since(0);
+        assert_eq!(lines.len(), HISTORY_LINES);
+        assert_eq!(lines[0], "5");
+        assert_eq!(seen, HISTORY_LINES + 5);
+        // A reader that fell behind gets what is left, not a gap error.
+        assert_eq!(history.since(2).0.len(), HISTORY_LINES);
+    }
 
     #[test]
     fn rotates_when_full_and_keeps_one_old_file() {

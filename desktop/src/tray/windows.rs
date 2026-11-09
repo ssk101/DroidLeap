@@ -16,7 +16,7 @@ use windows_sys::Win32::{
     },
 };
 
-use super::{APP_TITLE, MENU_TITLE_SIDE, SIDES, app_icon_rgba, open_with};
+use super::{APP_TITLE, MENU_TITLE_SIDE, SIDES, app_icon_rgba, log_window, open_with};
 use crate::{
     config::Paths,
     engine::{Command, Status},
@@ -24,6 +24,7 @@ use crate::{
 };
 
 const WM_STATUS_CHANGED: u32 = WM_APP + 1;
+const WM_SHOW_LOG: u32 = WM_APP + 2;
 
 /// Shows the tray icon and keeps it in step with `status`.
 pub fn spawn(
@@ -31,11 +32,11 @@ pub fn spawn(
     commands: mpsc::UnboundedSender<Command>,
     paths: &Paths,
 ) {
-    let (config_file, log_file) = (paths.config_file.clone(), paths.log_file.clone());
+    let config_file = paths.config_file.clone();
     let thread_status = status.clone();
     let (started, thread_id) = std_mpsc::channel();
     std::thread::spawn(move || {
-        if let Err(e) = run(thread_status, commands, config_file, log_file, started) {
+        if let Err(e) = run(thread_status, commands, config_file, started) {
             log(format!("no tray icon: {e}"));
         }
     });
@@ -53,13 +54,13 @@ fn run(
     mut status: watch::Receiver<Status>,
     commands: mpsc::UnboundedSender<Command>,
     config_file: PathBuf,
-    log_file: PathBuf,
     started: std_mpsc::Sender<u32>,
 ) -> Result<(), String> {
     let mut message: MSG = unsafe { mem::zeroed() };
     // Creates this thread's message queue, so status posts can't get lost.
     unsafe { PeekMessageW(&mut message, ptr::null_mut(), 0, 0, PM_NOREMOVE) };
-    let _ = started.send(unsafe { GetCurrentThreadId() });
+    let thread_id = unsafe { GetCurrentThreadId() };
+    let _ = started.send(thread_id);
 
     let (rgba, width, height) = app_icon_rgba()?;
     let icon = Icon::from_rgba(rgba, width, height).map_err(|e| e.to_string())?;
@@ -77,7 +78,11 @@ fn run(
         let command = match event.id.as_ref() {
             "enabled" => Command::SetEnabled(!menu_status.borrow().enabled),
             "settings" => return open_with("notepad.exe", &config_file),
-            "log" => return open_with("notepad.exe", &log_file),
+            "log" => {
+                // The window belongs to the tray thread, which this handler may not run on.
+                unsafe { PostThreadMessageW(thread_id, WM_SHOW_LOG, 0, 0) };
+                return;
+            }
             "reload" => Command::ReloadConfig,
             "quit" => Command::Quit,
             id => match SIDES.iter().find(|(_, label)| id == side_id(label)) {
@@ -91,6 +96,10 @@ fn run(
     while unsafe { GetMessageW(&mut message, ptr::null_mut(), 0, 0) } > 0 {
         if message.hwnd.is_null() && message.message == WM_STATUS_CHANGED {
             update(&tray, &status.borrow_and_update());
+            continue;
+        }
+        if message.hwnd.is_null() && message.message == WM_SHOW_LOG {
+            log_window::show();
             continue;
         }
         unsafe {
