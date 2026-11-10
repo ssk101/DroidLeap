@@ -1,6 +1,6 @@
 [package]
 name = "droidleap"
-version = "0.5.2"
+version = "0.5.3"
 edition = "2024"
 description = "Use an Android device as a screen-edge extension over USB"
 authors = ["Stian Skjondal <ssk101@users.noreply.github.com>"]
