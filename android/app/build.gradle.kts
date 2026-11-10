@@ -14,8 +14,8 @@ android {
         // Android 11: WindowContext and WindowMetrics, needed for overlays from a service.
         minSdk = 30
         targetSdk = 36
-        versionCode = 7
-        versionName = "0.5.3"
+        versionCode = 8
+        versionName = "0.5.4"
     }
 
     signingConfigs {
