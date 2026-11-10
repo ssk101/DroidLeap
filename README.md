@@ -61,7 +61,16 @@ The tray menu changes the common settings; the rest are in the settings file
 | `timeout_ms` | `1000` | Time window in which the push must add up |
 | `serial` | *(empty)* | USB serial number of the Android device; only needed with several plugged in |
 | `return_key` | `pause` | Key that brings input back: `pause`, `scrolllock`, `printscreen`, `insert`, `menu`, `f1` to `f24`, `rightctrl`, `rightalt`, `rightmeta` or `rightshift`. It never reaches the device. |
+| `adb_kill` | `ask` | If the adb server is running at startup: `ask` before stopping it, `always` stop it, or `never` |
 | `enabled` | `true` | `false` keeps all input on the desktop |
+
+## Updating
+
+Desktop: tray menu > **Check for updates and install**. It downloads the latest
+release, checks it against the release's `SHA256SUMS`, installs it and restarts.
+On Linux that needs the installed `.deb` and asks for your password (polkit); on
+Windows the `.exe` is replaced in place, so it needs to sit in a folder you can write to.
+Android: Obtainium, or install the new `.apk`.
 
 | | Settings file | Log |
 | --- | --- | --- |

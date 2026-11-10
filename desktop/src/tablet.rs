@@ -114,6 +114,13 @@ impl UsbTablet {
         }
     }
 
+    /// Looks for the tablet again right away, e.g. once something that held it let go.
+    pub fn retry_now(&mut self) {
+        self.attempts_left = ATTEMPTS_AFTER_PLUG;
+        self.last_error = None;
+        self.retry_at = Some(Instant::now());
+    }
+
     /// Forgets the tablet after it stopped answering, and looks for it again.
     pub fn lost(&mut self, reason: String) -> Change {
         // Not closed: it's gone or broken, so unregistering would fail too.

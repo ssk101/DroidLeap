@@ -15,8 +15,10 @@ use mdns_sd::ServiceDaemon;
 use tokio::sync::{mpsc, watch};
 
 use crate::{
+    adb,
     capture::{Capture, CaptureError, Input},
-    config::{Config, Paths},
+    config::{AdbKill, Config, Paths},
+    dialog,
     geometry::{Rect, Side, return_point},
     hid::{KEYBOARD_ID, Keyboard, MOUSE_ID, Mouse},
     keymap::{self, NamedKey},
@@ -32,12 +34,19 @@ const SESSION_RETRY_DELAY: Duration = Duration::from_secs(5);
 /// pointer arrived is on its way. The report crosses Wi-Fi, so it can trail a flick that already stopped.
 const EDGE_REPORT_LAG: Duration = Duration::from_millis(300);
 
+const ADB_DIALOG_TITLE: &str = "DroidLeap";
+const ADB_QUESTION: &str = "The adb server is running. It can keep DroidLeap from using the \
+    Android device over USB.\n\nStop it now? Android Studio and other tools start it again when they need it.";
+
 /// Requests from the user interface.
 #[derive(Debug)]
 pub enum Command {
     SetEnabled(bool),
     SetSide(Side),
     ReloadConfig,
+    KillAdb,
+    /// Quit, and have the caller start the app again (after an update).
+    Restart,
     Quit,
 }
 
@@ -50,6 +59,7 @@ pub struct Status {
     pub tablet: Option<String>,
     pub link: Option<String>,
     pub on_tablet: bool,
+    pub adb_running: bool,
     pub problem: Option<String>,
 }
 
@@ -62,6 +72,7 @@ impl Status {
             tablet: None,
             link: None,
             on_tablet: false,
+            adb_running: false,
             problem: None,
         }
     }
@@ -83,6 +94,9 @@ impl Status {
                 "Input is on the device ({} returns)",
                 self.return_key.label()
             ));
+        }
+        if self.adb_running {
+            lines.push("The adb server is running and can block USB access".into());
         }
         if let Some(problem) = &self.problem {
             lines.push(problem.clone());
@@ -171,6 +185,8 @@ pub struct Engine {
     mdns: Option<ServiceDaemon>,
     mouse: Mouse,
     keyboard: Keyboard,
+    /// Set when asked to quit so that the app starts again.
+    restart: bool,
 }
 
 impl Engine {
@@ -196,10 +212,13 @@ impl Engine {
             mdns,
             mouse: Mouse::default(),
             keyboard: Keyboard::default(),
+            restart: false,
         }
     }
 
-    pub async fn run(mut self) {
+    /// Runs until quit. Returns whether the app should start again.
+    pub async fn run(mut self) -> bool {
+        self.check_adb().await;
         loop {
             if !self.config.enabled {
                 log("capture is off");
@@ -240,6 +259,41 @@ impl Engine {
             log(format!("could not stop mDNS: {e}"));
         }
         log("stopped");
+        self.restart
+    }
+
+    /// The adb server can hold the device's ADB interface, which we need.
+    async fn check_adb(&mut self) {
+        if !adb::is_running().await {
+            return;
+        }
+        log("the adb server is running");
+        let stop = match self.config.adb_kill {
+            AdbKill::Always => true,
+            AdbKill::Never => false,
+            AdbKill::Ask => dialog::confirm(ADB_DIALOG_TITLE, ADB_QUESTION)
+                .await
+                .unwrap_or(false),
+        };
+        if stop {
+            self.kill_adb().await;
+        } else {
+            self.set_status(|s| s.adb_running = true);
+        }
+    }
+
+    async fn kill_adb(&mut self) {
+        match adb::kill().await {
+            Ok(()) => {
+                log("stopped the adb server");
+                self.set_status(|s| s.adb_running = false);
+                self.usb.retry_now();
+            }
+            Err(e) => {
+                log(&e);
+                self.set_status(|s| s.problem = Some(e));
+            }
+        }
     }
 
     /// Waits without a capture session, still following commands and the tablet.
@@ -255,6 +309,11 @@ impl Engine {
             tokio::select! {
                 command = self.commands.recv() => match command {
                     None | Some(Command::Quit) => return false,
+                    Some(Command::Restart) => {
+                        self.restart = true;
+                        return false;
+                    }
+                    Some(Command::KillAdb) => self.kill_adb().await,
                     Some(Command::SetEnabled(on)) => {
                         self.set_enabled(on);
                         if on {
@@ -336,6 +395,15 @@ impl Engine {
             None | Some(Command::Quit) => {
                 self.hand_back_now(capture, session).await;
                 Some(End::Quit)
+            }
+            Some(Command::Restart) => {
+                self.restart = true;
+                self.hand_back_now(capture, session).await;
+                Some(End::Quit)
+            }
+            Some(Command::KillAdb) => {
+                self.kill_adb().await;
+                None
             }
             Some(Command::SetEnabled(true)) => None,
             Some(Command::SetEnabled(false)) => {

@@ -4,8 +4,14 @@ set -eu
 umask 022
 cd "$(dirname "$0")"
 
-NAME=droidleap
-VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+# Package metadata comes from Cargo.toml (the first match is the [package] one).
+field() { sed -n "s/^$1 = \"\(.*\)\"/\1/p" Cargo.toml | head -1; }
+
+NAME=$(field name)
+VERSION=$(field version)
+DESCRIPTION=$(field description)
+HOMEPAGE=$(field repository)
+MAINTAINER=$(sed -n 's/^authors = \["\(.*\)"\]/\1/p' Cargo.toml | head -1)
 ARCH=$(dpkg --print-architecture)
 OUT=target/debian
 STAGE=$OUT/$NAME
@@ -50,16 +56,16 @@ cat > "$STAGE/DEBIAN/control" <<EOF
 Package: $NAME
 Version: $VERSION
 Architecture: $ARCH
-Maintainer: Stian Skjondal <ssk101@users.noreply.github.com>
+Maintainer: $MAINTAINER
 Depends: $SHLIBS, xdg-desktop-portal, android-udev-rules
-Recommends: xdg-desktop-portal-gnome | xdg-desktop-portal-kde, gnome-shell-extension-appindicator | plasma-workspace
+Recommends: xdg-desktop-portal-gnome | xdg-desktop-portal-kde, gnome-shell-extension-appindicator | plasma-workspace, zenity | kdialog, pkexec
 Conflicts: tablet-edge
 Replaces: tablet-edge
 Section: utils
 Priority: optional
 Installed-Size: $(du -sk "$STAGE/usr" | cut -f1)
-Homepage: https://github.com/ssk101/DroidLeap
-Description: Use an Android device as a screen-edge extension over USB
+Homepage: $HOMEPAGE
+Description: $DESCRIPTION
  Moving the mouse off a chosen desktop edge hands mouse and keyboard to an
  Android phone or tablet connected over USB (Android Open Accessory HID).
  Pause, or moving back through the device's edge (with the DroidLeap Android

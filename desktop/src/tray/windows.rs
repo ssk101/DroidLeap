@@ -30,13 +30,14 @@ const WM_SHOW_LOG: u32 = WM_APP + 2;
 pub fn spawn(
     mut status: watch::Receiver<Status>,
     commands: mpsc::UnboundedSender<Command>,
+    updates: mpsc::UnboundedSender<()>,
     paths: &Paths,
 ) {
     let config_file = paths.config_file.clone();
     let thread_status = status.clone();
     let (started, thread_id) = std_mpsc::channel();
     std::thread::spawn(move || {
-        if let Err(e) = run(thread_status, commands, config_file, started) {
+        if let Err(e) = run(thread_status, commands, updates, config_file, started) {
             log(format!("no tray icon: {e}"));
         }
     });
@@ -53,6 +54,7 @@ pub fn spawn(
 fn run(
     mut status: watch::Receiver<Status>,
     commands: mpsc::UnboundedSender<Command>,
+    updates: mpsc::UnboundedSender<()>,
     config_file: PathBuf,
     started: std_mpsc::Sender<u32>,
 ) -> Result<(), String> {
@@ -84,6 +86,11 @@ fn run(
                 return;
             }
             "reload" => Command::ReloadConfig,
+            "kill-adb" => Command::KillAdb,
+            "update" => {
+                let _ = updates.send(()); // only fails once the app is stopping
+                return;
+            }
             "quit" => Command::Quit,
             id => match SIDES.iter().find(|(_, label)| id == side_id(label)) {
                 Some((side, _)) => Command::SetSide(*side),
@@ -156,6 +163,20 @@ fn menu(status: &Status) -> Result<Menu, String> {
         &MenuItem::with_id("settings", "Edit settings file", true, None),
         &MenuItem::with_id("reload", "Reload settings", true, None),
         &MenuItem::with_id("log", "Show log", true, None),
+        &PredefinedMenuItem::separator(),
+    ])
+    .map_err(error)?;
+    if status.adb_running {
+        menu.append(&MenuItem::with_id(
+            "kill-adb",
+            "Stop the adb server",
+            true,
+            None,
+        ))
+        .map_err(error)?;
+    }
+    menu.append_items(&[
+        &MenuItem::with_id("update", "Check for updates and install", true, None),
         &PredefinedMenuItem::separator(),
         &MenuItem::with_id(MenuId::new("quit"), "Quit", true, None),
     ])

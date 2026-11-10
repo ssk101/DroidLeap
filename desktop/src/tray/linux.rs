@@ -19,6 +19,7 @@ use crate::{
 struct Tray {
     status: Status,
     commands: mpsc::UnboundedSender<Command>,
+    updates: mpsc::UnboundedSender<()>,
     config_file: PathBuf,
     log_file: PathBuf,
 }
@@ -120,6 +121,27 @@ impl ksni::Tray for Tray {
             }
             .into(),
             MenuItem::Separator,
+        ]);
+        if self.status.adb_running {
+            items.push(
+                StandardItem {
+                    label: "Stop the adb server".into(),
+                    activate: Box::new(|tray: &mut Self| tray.send(Command::KillAdb)),
+                    ..Default::default()
+                }
+                .into(),
+            );
+        }
+        items.extend([
+            StandardItem {
+                label: "Check for updates and install".into(),
+                activate: Box::new(|tray: &mut Self| {
+                    let _ = tray.updates.send(()); // only fails once the app is stopping
+                }),
+                ..Default::default()
+            }
+            .into(),
+            MenuItem::Separator,
             StandardItem {
                 label: "Quit".into(),
                 activate: Box::new(|tray: &mut Self| tray.send(Command::Quit)),
@@ -136,11 +158,13 @@ impl ksni::Tray for Tray {
 pub fn spawn(
     mut status: watch::Receiver<Status>,
     commands: mpsc::UnboundedSender<Command>,
+    updates: mpsc::UnboundedSender<()>,
     paths: &Paths,
 ) {
     let tray = Tray {
         status: status.borrow().clone(),
         commands,
+        updates,
         config_file: paths.config_file.clone(),
         log_file: paths.log_file.clone(),
     };

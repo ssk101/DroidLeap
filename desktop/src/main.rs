@@ -6,7 +6,7 @@
 
 use std::{
     fs::{File, TryLockError},
-    process::ExitCode,
+    process::{ExitCode, Stdio},
 };
 
 use tokio::{
@@ -17,7 +17,7 @@ use tokio::{
 use droidleap::{
     config::{Config, Paths},
     engine::{Command, Engine, Status},
-    log, logging, tray,
+    log, logging, tray, update,
 };
 
 fn main() -> ExitCode {
@@ -63,14 +63,31 @@ async fn run() -> Result<(), String> {
         ..Status::new(&config)
     });
     let (commands, command_receiver) = mpsc::unbounded_channel();
-    tray::spawn(status, commands.clone(), &paths);
+    // Where this app lives, from before an update replaces it (on Linux the path would then read "(deleted)").
+    let exe =
+        std::env::current_exe().map_err(|e| format!("cannot find the app's own file: {e}"))?;
+    update::cleanup(&exe);
+    let (update_requests, update_receiver) = mpsc::unbounded_channel();
+    tray::spawn(status, commands.clone(), update_requests, &paths);
+    tokio::spawn(update::run(update_receiver, commands.clone(), exe.clone()));
     spawn_quit_on_signals(commands);
 
     // The Linux capture session runs as a local task.
-    LocalSet::new()
+    let restart = LocalSet::new()
         .run_until(Engine::new(config, paths, command_receiver, status_sender).run())
         .await;
     drop(lock);
+    if restart {
+        log("starting the updated app");
+        if let Err(e) = std::process::Command::new(&exe)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            log(format!("cannot start {}: {e}", exe.display()));
+        }
+    }
     Ok(())
 }
 

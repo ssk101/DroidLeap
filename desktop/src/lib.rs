@@ -3,9 +3,11 @@
 //!
 //! "Tablet" in the code names that device's role, whether phone or tablet.
 
+pub mod adb;
 pub mod aoa;
 pub mod capture;
 pub mod config;
+pub mod dialog;
 pub mod engine;
 pub mod geometry;
 pub mod hid;
@@ -14,5 +16,6 @@ pub mod link;
 pub mod logging;
 pub mod tablet;
 pub mod tray;
+pub mod update;
 
 pub use logging::log;

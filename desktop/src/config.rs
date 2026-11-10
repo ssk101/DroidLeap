@@ -22,9 +22,21 @@ const HEADER: &str = "\
 # return_key   key that brings input back to the desktop: pause, scrolllock,
 #              printscreen, insert, menu, f1 to f24, rightctrl, rightalt,
 #              rightmeta or rightshift
+# adb_kill     what to do if the adb server is running at startup, since it can
+#              block USB access: ask, always (stop it) or never
 # enabled      false keeps all input on the desktop
 
 ";
+
+/// What to do about a running adb server at startup.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AdbKill {
+    #[default]
+    Ask,
+    Always,
+    Never,
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -34,6 +46,7 @@ pub struct Config {
     pub timeout_ms: u64,
     pub serial: String,
     pub return_key: NamedKey,
+    pub adb_kill: AdbKill,
     pub enabled: bool,
 }
 
@@ -45,6 +58,7 @@ impl Default for Config {
             timeout_ms: 1000,
             serial: String::new(),
             return_key: NamedKey::PAUSE,
+            adb_kill: AdbKill::default(),
             enabled: true,
         }
     }
@@ -163,6 +177,16 @@ mod tests {
         let path = temp_file("return-key");
         fs::write(&path, "return_key = \"scrolllock\"\n").unwrap();
         assert_eq!(Config::load(&path).unwrap().return_key.evdev(), 70);
+    }
+
+    #[test]
+    fn adb_kill_by_name_and_asks_by_default() {
+        let path = temp_file("adb-kill");
+        assert_eq!(Config::default().adb_kill, AdbKill::Ask);
+        fs::write(&path, "adb_kill = \"always\"\n").unwrap();
+        assert_eq!(Config::load(&path).unwrap().adb_kill, AdbKill::Always);
+        fs::write(&path, "adb_kill = \"sometimes\"\n").unwrap();
+        assert!(Config::load(&path).is_err());
     }
 
     #[test]

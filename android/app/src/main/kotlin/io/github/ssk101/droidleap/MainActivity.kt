@@ -19,6 +19,12 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         val pad = (16 * resources.displayMetrics.density).toInt()
 
+        val version = packageManager.getPackageInfo(packageName, 0).let { "${it.versionName} (build ${it.longVersionCode})" }
+        val title = TextView(this).apply {
+            text = "DroidLeap $version"
+            textSize = 20f
+            setTypeface(typeface, Typeface.BOLD)
+        }
         val hint = TextView(this).apply {
             text = "Turn on DroidLeap under Accessibility, then start DroidLeap on the PC."
         }
@@ -41,6 +47,7 @@ class MainActivity : Activity() {
                 v.setPadding(pad + bars.left, pad + bars.top, pad + bars.right, pad + bars.bottom)
                 insets
             }
+            addView(title)
             addView(hint)
             addView(accessibilityButton)
             addView(logScroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
